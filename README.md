@@ -8,3 +8,6 @@ We use conda to manage the Python environmet.
 3. install Open3d:
     - conda install open3d-admin::open3d (0.15.1)
     - pip install scikit-learn matplotlib pandas plyfile tqdm
+
+# Run the code
+Please run the scripts with terminal under root directory
