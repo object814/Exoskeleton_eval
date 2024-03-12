@@ -1,0 +1,8 @@
+-e *.log
+*.tmp
+node_modules/
+.env
+build/
+*.pyc
+__pycache__/
+
