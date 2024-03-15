@@ -3,7 +3,7 @@ import pybullet_data
 import sys
 import os
 sys.path.append(".")
-from utils.CameraHandler import CameraHandler
+from utils.Simulation.CameraHandler import CameraHandler
 
 # Initialize the simulation
 physicsClient = p.connect(p.GUI)
