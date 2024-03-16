@@ -11,6 +11,8 @@ We use conda to manage the Python environment.
 3. Install Open3d:
     - `conda install open3d-admin::open3d` (version 0.15.1)
     - `pip install scikit-learn matplotlib pandas plyfile tqdm addict`
+4. Other pip dependencies:
+    - pip install qrcode trimesh
 
 ## Running the code
 

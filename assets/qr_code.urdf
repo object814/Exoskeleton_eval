@@ -1,0 +1,13 @@
+<?xml version="1.0"?>
+<robot name="qr_code_cube">
+  <link name="base_link">
+    <visual>
+      <geometry>
+        <mesh filename="plate_mesh.obj"/>
+      </geometry>
+      <material name="qr_code">
+        <texture filename="qr_code.png"/>
+      </material>
+    </visual>
+  </link>
+</robot>
