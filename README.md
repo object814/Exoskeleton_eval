@@ -32,3 +32,13 @@ Before you perform QR code tracking, you need to calibrate your device.
     python scripts/camera_calibration.py your_video_file.mp4 9 6 25
     # chessboard with 9*6 grid size and 25 mm
     ```
+
+## Environment setup for keypoint detection
+
+We use DeepLabCut for 2D keypoint detection on both exoskeleton and *human body (TODO)
+
+run `git submodule update --init --recursive` in the repo to clone the DeepLabCut into 3rdparty
+
+Then run: `conda env update -f 3rdparty/DEEPLABCUT.yaml` to merge the environment into your current conda environment
+
+For full experience of DeelLabCut, run: `pip install 'deeplabcut[gui,tf]'` 
