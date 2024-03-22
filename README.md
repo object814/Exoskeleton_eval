@@ -4,12 +4,12 @@ A brief description of the Exoskeleton_eval project.
 
 ## Environment setup
 
-We use conda to manage the Python environment.
+We use conda to manage the Python(3.8) environment.
 
-1. Install pybullet: `conda install conda-forge::pybullet` (version 3.25)
-2. Install OpenCV: `pip install opencv-python` (version 4.9.0)
+1. Install pybullet: `conda install conda-forge::pybullet==3.25` (version 3.25)
+2. Install OpenCV: `pip install opencv-python==4.9.0.80` (version 4.9.0)
 3. Install Open3d:
-    - `conda install open3d-admin::open3d` (version 0.15.1)
+    - `conda install open3d-admin::open3d==0.15.1` (version 0.15.1)
     - `pip install scikit-learn matplotlib pandas plyfile tqdm addict`
 4. Other pip dependencies:
     - pip install qrcode trimesh
