@@ -42,3 +42,17 @@ run `git submodule update --init --recursive` in the repo to clone the DeepLabCu
 Then run: `conda env update -f 3rdparty/DEEPLABCUT.yaml` to merge the environment into your current conda environment
 
 For full experience of DeelLabCut, run: `pip install 'deeplabcut[gui,tf]'` 
+
+run `conda activate DEEPLABCUT` and you are free to use the deeplabcut for keypoints tracktion
+
+run `python -m deeplabcut` in DEEPLABCUT env to use the GUI
+
+### Trouble shooting
+In our case (Ubuntu20.04) we encpuntered:
+
+`ImportError: /lib/x86_64-linux-gnu/libstdc++.so.6: version 'GLIBCXX_3.4.29' not found (required by /home/YOUR_USER_NAME/anaconda3/envs/DEEPLABCUT/lib/python3.9/site-packages/zmq/backend/cython/../../../../../libzmq.so.5)`
+
+Soulution:
+
+`sudo rm /lib/x86_64-linux-gnu/libstdc++.so.6`
+`sudo cp /home/YOUR_USER_NAME/anaconda3/envs/DEEPLABCUT/lib/libstdc++.so.6 /lib/x86_64-linux-gnu/`
