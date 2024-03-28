@@ -1,20 +1,20 @@
 import qrcode
 
-# Data to be encoded
-data = "https://example.com"
+def generate_qr_codes(num_codes, resolution):
+    for i in range(1, num_codes + 1):
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(f'{i}')
+        qr.make(fit=True)
 
-# Generate QR code
-qr = qrcode.QRCode(
-    version=1,  # Version 1 means 21x21 matrix, adjust size with version number
-    error_correction=qrcode.constants.ERROR_CORRECT_L,
-    box_size=50,  # Size of each box in pixels
-    border=4,  # Border thickness in boxes, default is 4
-)
-qr.add_data(data)
-qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+        img = img.resize((resolution, resolution))
+        img.save(f"assets/qr_code_{i}.png")
 
-# Create an image from the QR Code instance
-img = qr.make_image(fill_color="black", back_color="white")
-
-# Save it somewhere, adjust path as needed
-img.save("assets/qr_code.png")
+num_codes = 5  # Number of QR codes to generate
+resolution = 1000  # Resolution of each QR code
+generate_qr_codes(num_codes, resolution)
