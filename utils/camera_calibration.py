@@ -13,7 +13,7 @@ def visualize_chessboard_detection(frame, corners):
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-def calibrate_camera_from_video(video_filename, chessboard_dims, square_size, frames_to_use):
+def calibrate_camera_from_video(video_filename, chessboard_dims, square_size, frames_to_use, save_to_file=True):
     """
     Calibrates the camera using a video with a chessboard pattern.
     
@@ -21,8 +21,12 @@ def calibrate_camera_from_video(video_filename, chessboard_dims, square_size, fr
         video_filename: Name of the video file located in the assets folder.
         chessboard_dims: Tuple of two integers with the number of inner corners in the chessboard pattern along the width and height respectively.
         square_size: Size of a square in the chessboard (in the same units used for the calibration object's real world dimensions).
+        frames_to_use: Number of frames used for calibration.
+        save_to_file: Boolean flag to specify whether to save the calibration data to a JSON file. Default is True.
 
-    Calibration data is saved to a JSON file located in the configs folder.
+    Returns:
+        If save_to_file is False, returns a dictionary containing the camera matrix and distortion coefficients.
+        If save_to_file is True, saves the calibration data to a JSON file located in the configs folder and returns None.
     """
     assets_path = os.path.join("assets", video_filename)
     configs_path = os.path.join("configs", "camera_calibration.json")
@@ -95,10 +99,13 @@ def calibrate_camera_from_video(video_filename, chessboard_dims, square_size, fr
             "distortion_coefficients": dist.tolist()
         }
         
-        with open(configs_path, "w") as f:
-            json.dump(calibration_data, f)
+        if save_to_file:
+            with open(configs_path, "w") as f:
+                json.dump(calibration_data, f)
         
-        print(f"Calibration data saved to {configs_path}")
+            print(f"Calibration data saved to {configs_path}")
+        else:
+            return calibration_data
     else:
         print("Could not find enough chessboard patterns for calibration.")
 
@@ -108,8 +115,7 @@ if __name__ == "__main__":
     parser.add_argument("n", type=int, help="Number of inner corners in the chessboard pattern along the width")
     parser.add_argument("m", type=int, help="Number of inner corners in the chessboard pattern along the height")
     parser.add_argument("square_size", type=float, help="Size of a square in the chessboard (in the same units used for the calibration object's real world dimensions")
-    parser.add_argument("--frame_to_use", type=int, help="Number of frames used for calibration", default=25)
-    
+    parser.add_argument("--frame_to_use", type=int, help="Number of frames used for calibration", default=25)    
     args = parser.parse_args()
     
     calibrate_camera_from_video(args.video_filename, (args.n, args.m), args.square_size, args.frame_to_use)
