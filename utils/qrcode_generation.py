@@ -25,9 +25,9 @@ def generate_qr_codes_pdf(num_codes, qr_sizes_mm, gap_mm=20):
         qr_sizes_mm = [qr_sizes_mm[0]] * num_codes
 
     # Calculate the gap in points
-    gap = gap_mm * 2.83465
+    gap = gap_mm * mm
 
-    for i, qr_size_mm in enumerate(qr_sizes_mm, start=1):
+    for i, qr_size_mm in enumerate(qr_sizes_mm):
         qr = qrcode.QRCode(
             version=1,
             error_correction=qrcode.constants.ERROR_CORRECT_L,
@@ -46,8 +46,8 @@ def generate_qr_codes_pdf(num_codes, qr_sizes_mm, gap_mm=20):
         img_buffer.seek(0)
         img_reader = ImageReader(img_buffer)
 
-        # Calculate the QR code size in points (1 mm ≈ 2.83465 points)
-        qr_size_points = qr_size_mm * 2.83465
+        # Calculate the QR code size in points
+        qr_size_points = qr_size_mm * mm
 
         # Center positions
         page_center_x = A4[0] / 2
@@ -86,8 +86,8 @@ def generate_qr_codes_imgs(num_codes, resolution):
         img = img.resize((resolution, resolution))
         img.save(f"assets/qr_code_{i}.png")
 
-num_codes = 5  # Number of QR codes to generate
+num_codes = 2  # Number of QR codes to generate
 resolution = 1000  # Resolution of each QR code
-qr_sizes_mm = [100, 80, 50, 100, 80]  # Varying sizes for each QR code in millimeters
+qr_sizes_mm = [80,40]  # Varying sizes for each QR code in millimeters
 generate_qr_codes_imgs(num_codes, resolution)
 generate_qr_codes_pdf(num_codes, qr_sizes_mm)
