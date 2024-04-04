@@ -56,7 +56,7 @@ def get_qr_poses_from_video(video_path, qr_code_sizes, qr_labels, camera_matrix,
 
     Args:
         video_path (str): The path to the video file.
-        qr_code_sizes (list): A list of QR code sizes in meters.
+        qr_code_sizes (list): A list of QR code sizes in milimeters.
         qr_labels (list): A list of QR code labels.
         camera_matrix (numpy.ndarray): The camera matrix.
         dist_coeffs (numpy.ndarray): The distortion coefficients.
@@ -78,6 +78,7 @@ def get_qr_poses_from_video(video_path, qr_code_sizes, qr_labels, camera_matrix,
     Raises:
         IOError: If the video file cannot be opened.
     """
+
     if save_to_file:
         output_json_filename = f"{output_json_filename or 'transformation_matrices'}_{time.strftime('%Y%m%d%H%M%S')}.json"
         output_json_path = os.path.join("data", output_json_filename)

@@ -196,3 +196,9 @@ def main(calibration_video_path = None,
      should be very close, i being the frame number, 
      except being identity matirx (QR code not detected in some cameras)
     ''' 
+
+    # ###### Save the QR code poses to JSON files ######
+    # for i in range(camera_num):
+    #     with open(f"assets/{camera_names[i]}_qr_pose_info.json", "w") as f:
+    #         json.dump(camera_dict[camera_names[i]]["QR_pose_info"], f, indent=4)
+    #     print(f"QR code poses for \033[92m{camera_names[i]}\033[0m saved successfully.")
