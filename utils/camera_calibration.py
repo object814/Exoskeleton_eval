@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 import os
+import sys
 import json
 import argparse
 
@@ -13,23 +14,27 @@ def visualize_chessboard_detection(frame, corners):
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-def calibrate_camera_from_video(video_filename, chessboard_dims, square_size, frames_to_use, save_to_file=True):
+def calibrate_camera_from_video(assets_path, chessboard_dims, square_size, frames_to_use, save_to_file=True):
     """
-    Calibrates the camera using a video with a chessboard pattern.
-    
+    Calibrates the camera using a video file containing chessboard patterns.
+
     Args:
-        video_filename: Name of the video file located in the assets folder.
-        chessboard_dims: Tuple of two integers with the number of inner corners in the chessboard pattern along the width and height respectively.
-        square_size: Size of a square in the chessboard (in the same units used for the calibration object's real world dimensions).
-        frames_to_use: Number of frames used for calibration.
-        save_to_file: Boolean flag to specify whether to save the calibration data to a JSON file. Default is True.
+        assets_path (str): The path to the video file.
+        chessboard_dims (tuple): The dimensions of the chessboard pattern (rows, columns).
+        square_size (float): The size of each square in the chessboard pattern.
+        frames_to_use (int): The number of frames to use for calibration.
+        save_to_file (bool, optional): Whether to save the calibration data to a file. Defaults to True.
 
     Returns:
-        If save_to_file is False, returns a dictionary containing the camera matrix and distortion coefficients.
-        If save_to_file is True, saves the calibration data to a JSON file located in the configs folder and returns None.
+        dict or None: If `save_to_file` is False, returns a dictionary containing the calibration data.
+                     If `save_to_file` is True, returns None.
+
+    Raises:
+        FileNotFoundError: If the video file is not found.
+        ValueError: If the number of frames to use is less than or equal to 0.
+
     """
-    assets_path = os.path.join("assets", video_filename)
-    configs_path = os.path.join("configs", "camera_calibration.json")
+    configs_path = os.path.join("configs", "camera_calibration_iphone.json")
     
     objp = np.zeros((chessboard_dims[0]*chessboard_dims[1], 3), np.float32)
     objp[:, :2] = np.mgrid[0:chessboard_dims[0], 0:chessboard_dims[1]].T.reshape(-1, 2) * square_size
@@ -39,8 +44,7 @@ def calibrate_camera_from_video(video_filename, chessboard_dims, square_size, fr
     
     cap = cv2.VideoCapture(assets_path)
     if not cap.isOpened():
-        print("Error: Could not open video.")
-        return
+        raise FileNotFoundError("Error: Could not open video.")
     
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
     frame_indices = []
@@ -111,11 +115,12 @@ def calibrate_camera_from_video(video_filename, chessboard_dims, square_size, fr
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Camera calibration from a video using a chessboard pattern.")
-    parser.add_argument("video_filename", help="Name of the video file located in the assets folder")
+    parser.add_argument("video_filename", help="Path to the video file")
     parser.add_argument("n", type=int, help="Number of inner corners in the chessboard pattern along the width")
     parser.add_argument("m", type=int, help="Number of inner corners in the chessboard pattern along the height")
     parser.add_argument("square_size", type=float, help="Size of a square in the chessboard (in the same units used for the calibration object's real world dimensions")
     parser.add_argument("--frame_to_use", type=int, help="Number of frames used for calibration", default=25)    
+    parser.add_argument("--save_to_file", type=int, help="Save the result as file", default=True)    
     args = parser.parse_args()
     
     calibrate_camera_from_video(args.video_filename, (args.n, args.m), args.square_size, args.frame_to_use)

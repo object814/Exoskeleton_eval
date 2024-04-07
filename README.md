@@ -12,7 +12,7 @@ We use conda to manage the Python(3.8) environment.
     - `conda install open3d-admin::open3d==0.15.1` (version 0.15.1)
     - `pip install scikit-learn matplotlib pandas plyfile tqdm addict`
 4. Other pip dependencies:
-    - pip install qrcode trimesh reportlab kinpy
+    - pip install qrcode trimesh reportlab kinpy pyboof segno
 
 ## Running the code
 
