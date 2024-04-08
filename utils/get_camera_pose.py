@@ -21,6 +21,7 @@ def average_transformation_matrices(transformation_matrices):
 
     for T in transformation_matrices:
         if not is_identity_matrix(T):
+            T = np.array(T)
             R_mat = T[:3, :3]
             t_vec = T[:3, 3]
             quaternion = R.from_matrix(R_mat).as_quat()
@@ -48,6 +49,7 @@ def get_camera_pose_in_qr_frame(transformation_matrices):
     """Calculates the camera pose from averaging QR code transformation matrices."""
     T_avg_qr_in_cam = average_transformation_matrices(transformation_matrices)
     T_avg_cam_in_qr = invert_transformation_matrix(T_avg_qr_in_cam)
+    # print(np.matmul(T_avg_qr_in_cam, T_avg_cam_in_qr))
     return T_avg_cam_in_qr
 
 # Example usage

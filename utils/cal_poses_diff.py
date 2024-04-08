@@ -24,8 +24,8 @@ def cal_poses_diff(poses1, poses2):
     count_comparisons = 0
 
     for key in poses1.keys():
-        list1 = poses1[key]
-        list2 = poses2[key]
+        list1 = np.array(poses1[key])
+        list2 = np.array(poses2[key])
         assert len(list1) == len(list2), f"Lists for key '{key}' must have the same length"
 
         for pose1, pose2 in zip(list1, list2):
@@ -54,6 +54,8 @@ def cal_poses_diff(poses1, poses2):
 
         # Calculate unified difference
         unified_diff = (median_translational_diff + median_rotational_diff) / count_comparisons
+        print(f"Median translational difference: {median_translational_diff:.4f}")
+        print(f"Median rotational difference: {median_rotational_diff:.4f}")
     else:
         unified_diff = 0.0
 

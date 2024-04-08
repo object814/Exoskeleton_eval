@@ -5,7 +5,6 @@ import os
 import time
 import pyboof as pb
 
-pb.init_memmap()  # Initializes PyBoof
 
 def save_to_json(data, file_path):
     with open(file_path, 'w') as f:
@@ -53,7 +52,7 @@ def calculate_qr_poses(image, qr_code_sizes, expected_labels, camera_matrix, dis
     ordered_transformations = [transformations[label] for label in expected_labels]
     return ordered_transformations
 
-def calculate_micro_qr_poses(image, qr_code_sizes, expected_labels, camera_matrix, dist_coeffs):
+def calculate_micro_qr_poses(image, qr_code_sizes, expected_labels, camera_matrix, dist_coeffs, detector):
     """
     Calculates the poses of Micro QR codes in an image using PyBoof.
 
@@ -63,16 +62,18 @@ def calculate_micro_qr_poses(image, qr_code_sizes, expected_labels, camera_matri
         expected_labels (list): List of expected labels of the QR codes.
         camera_matrix (numpy.ndarray): The camera matrix.
         dist_coeffs (numpy.ndarray): The distortion coefficients.
+        detector (pyboof): The Micro QR code detector.
 
     Returns:
         list: List of transformation matrices representing the poses of the QR codes.
     """
+    # Convert the frame into grayscale
+    gray_frame = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
 
     # Convert the input image to PyBoof format
-    boof_image = pb.ndarray_to_boof(image)
+    boof_image = pb.ndarray_to_boof(gray_frame)
 
-    # Create a detector and detect Micro QR codes
-    detector = pb.FactoryFiducial(np.uint8).microqr()
+    # Detect Micro QR codes
     detector.detect(boof_image)
 
     transformations = {label: np.eye(4) for label in expected_labels}  # Default to identity matrix
@@ -82,7 +83,7 @@ def calculate_micro_qr_poses(image, qr_code_sizes, expected_labels, camera_matri
         if label in expected_labels:
             idx = expected_labels.index(label)
             
-            image_points = np.array([[p.x, p.y] for p in qr.bounds.vertexes]).astype(np.float32)
+            image_points = np.array(qr.bounds.convert_tuple(), dtype=np.float32)
 
             qr_size = qr_code_sizes[idx]
             object_points = np.array([
@@ -93,7 +94,7 @@ def calculate_micro_qr_poses(image, qr_code_sizes, expected_labels, camera_matri
             ], dtype=np.float32)
 
             # SolvePnP to find the pose
-            retval, rvec, tvec = cv2.solvePnP(object_points, image_points, camera_matrix, dist_coeffs)
+            retval, rvec, tvec = cv2.solvePnP(object_points, image_points, camera_matrix, dist_coeffs, flags=cv2.SOLVEPNP_IPPE_SQUARE)
             if retval:
                 R, _ = cv2.Rodrigues(rvec)
                 T = np.eye(4)
@@ -142,13 +143,15 @@ def get_qr_poses_from_video(video_path, qr_code_sizes, qr_labels, camera_matrix,
     qr_pose_info["occlusion_frame_number"] = {label: 0 for label in qr_labels}
     frame_counter = 0
 
+    detector = pb.FactoryFiducial(np.uint8).microqr() # initialize the detector
+
     while True:
         ret, frame = cap.read()
         if not ret:
             break
         
         if frame_counter % skip_frames == 0:
-            transformations = calculate_qr_poses(frame, qr_code_sizes, qr_labels, camera_matrix, dist_coeffs)
+            transformations = calculate_micro_qr_poses(frame, qr_code_sizes, qr_labels, camera_matrix, dist_coeffs, detector)
             for label, transformation in zip(qr_labels, transformations):
                 if np.array_equal(transformation, np.identity(4)):
                     qr_pose_info["occlusion_frame_number"][label] += 1

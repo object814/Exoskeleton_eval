@@ -31,6 +31,7 @@ def main(calibration_video_path = None,
     Returns:
         None
     """
+    '''
     try:
         if len(camera_names) != camera_num:
             raise ValueError("Number of camera names should match the number of cameras.")
@@ -104,7 +105,6 @@ def main(calibration_video_path = None,
             path_to_video = calculation_video_path[i]
         
         camera_dict[camera_names[i]]["Calculation_video_path"] = path_to_video # record the path to the video
-        print(f"Calculating QR code poses for \033[92m{camera_names[i]}\033[0m, video: {path_to_video}")
         # calculate the QR code poses for each frame
         qr_pose_info = get_qr_poses_from_video(
             path_to_video,
@@ -124,16 +124,24 @@ def main(calibration_video_path = None,
     
     ##### Debug use #####
     # save the camera_dict here as npy file
-    np.save("/home/object814/Workspace/Exoskeleton_eval/data/camera_dict_modified.npy", camera_dict)
-    return
+    # np.save("/home/object814/Workspace/Exoskeleton_eval/data/camera_dict_temp.npy", camera_dict)
+    # return
+    '''
+    camera_dict = np.load('data/camera_dict_modified.npy', allow_pickle=True).item()
+
+    np.save('/home/object814/Workspace/Exoskeleton_eval/data/iphone_qr1_in_camera_modified.npy', camera_dict['iphone']['QR_pose_info']['1'])
+    np.save('/home/object814/Workspace/Exoskeleton_eval/data/samsung_qr1_in_camera_modified.npy', camera_dict['samsung']['QR_pose_info']['1'])
+    np.save('/home/object814/Workspace/Exoskeleton_eval/data/iphone_qr2_in_camera_modified.npy', camera_dict['iphone']['QR_pose_info']['2'])
+    np.save('/home/object814/Workspace/Exoskeleton_eval/data/samsung_qr2_in_camera_modified.npy', camera_dict['samsung']['QR_pose_info']['2'])
 
     ###### Construct camera positions with respect to the specified QR code ######
-    if base_qr_label not in camera_dict[camera_names[i]]["QR_pose_info"]:
-        raise ValueError(f"Wrong base_qr_label. Please provide a valid label.")
     for i in range(camera_num):
+        if base_qr_label not in camera_dict[camera_names[i]]["QR_pose_info"]:
+            raise ValueError(f"Wrong base_qr_label. Please provide a valid label.")
         qr_poses = camera_dict[camera_names[i]]["QR_pose_info"][base_qr_label] # transformation matrices for base QR code
-        camera_pose = get_camera_pose_in_qr_frame([qr_poses]) # camera pose with respect to base QR code
+        camera_pose = get_camera_pose_in_qr_frame(qr_poses) # camera pose with respect to base QR code
         camera_dict[camera_names[i]]["Camera_pose"] = camera_pose # record the camera pose
+        print(f"Camera pose for \033[92m{camera_names[i]}\033[0m: \n{camera_pose}")
 
     ###### Calculate QR code poses with respect to new camera poses ######
     for i in range(camera_num):
@@ -143,7 +151,7 @@ def main(calibration_video_path = None,
                 qr_poses_new = []
                 for qr_pose in qr_poses[label]:
                     if np.array_equal(qr_pose, np.identity(4)):
-                        qr_pose_new = qr_pose
+                        qr_pose_new = np.array(qr_pose)
                     else:
                         qr_pose_new = np.dot(camera_dict[camera_names[i]]["Camera_pose"], qr_pose)
                     qr_poses_new.append(qr_pose_new.tolist())
@@ -152,14 +160,19 @@ def main(calibration_video_path = None,
     ###### Exclude the base QR code poses from the QR code poses ######
     for i in range(camera_num):
         camera_dict[camera_names[i]]["QR_pose_info"].pop(base_qr_label)
-    qr_labels.remove(base_qr_label)
     qr_sizes.remove(qr_sizes[qr_labels.index(base_qr_label)])
+    qr_labels.remove(base_qr_label)
 
     '''
     Now the list of the transformation matrices of QR code labeled "QR1" 
     with respect to the base QR code frame calculated from camera "camera1" is stored in 
     camera_dict["camera1"]["QR_pose_info"]["QR1"]
     '''
+
+    np.save('/home/object814/Workspace/Exoskeleton_eval/data/iphone_qr2_in_qr1_modified.npy', camera_dict['iphone']['QR_pose_info']['2'])
+    np.save('/home/object814/Workspace/Exoskeleton_eval/data/samsung_qr2_in_qr1_modified.npy', camera_dict['samsung']['QR_pose_info']['2'])
+    np.save('/home/object814/Workspace/Exoskeleton_eval/data/iphone_camera_in_qr1_modified.npy', camera_dict['iphone']['Camera_pose'])
+    np.save('/home/object814/Workspace/Exoskeleton_eval/data/samsung_camera_in_qr1_modified.npy', camera_dict['samsung']['Camera_pose'])
 
     ###### synchronize the QR code poses in different cameras ######
 
@@ -187,10 +200,12 @@ def main(calibration_video_path = None,
     basis_len = len(basis_qr_poses[qr_labels[0]]) # length of basis poses
 
     # for each camera other than the basis camera, align the corresponding QR code poses with the basis poses, starting from the beginning
+    max_frame_best = -np.inf # the latest best starting frame among all cameras (expect basis camera)
     for i in range(camera_num):
         if camera_names[i] != basis_camera:
             frame_len = len(camera_dict[camera_names[i]]["QR_pose_info"][qr_labels[0]]) # length of QR code poses for the current camera
             qr_poses = camera_dict[camera_names[i]]["QR_pose_info"]
+            qr_poses = {label: qr_poses[label] for label in qr_labels} # extract just the QR code poses for the current camera
             min_diff = float('inf')
             for starting_frame in range(0, basis_len-frame_len+1):
                 basis_qr_poses_temp =\
@@ -201,11 +216,10 @@ def main(calibration_video_path = None,
                     min_diff = diff
                     starting_frame_best = starting_frame # record the best starting frame
             print(f"Best starting frame for camera {camera_names[i]}: {starting_frame_best}")
-            for label in qr_labels:
-                camera_dict[camera_names[i]]["QR_pose_info"][label] =\
-                    [np.identity(4)]*starting_frame_best +\
-                    camera_dict[camera_names[i]]["QR_pose_info"][label] +\
-                    [np.identity(4)]*(basis_len-starting_frame_best-frame_len) # align the QR code poses with the basis poses
+            if starting_frame_best > max_frame_best:
+                max_frame_best = starting_frame_best
+    
+    # 
     
     '''
     Now the list of the transformation matrices of QR code labeled "QR1" 
