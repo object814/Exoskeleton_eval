@@ -14,12 +14,13 @@ def visualize_chessboard_detection(frame, corners):
     cv2.waitKey(0)
     cv2.destroyAllWindows()
 
-def calibrate_camera_from_video(assets_path, chessboard_dims, square_size, frames_to_use, save_to_file=True):
+def calibrate_camera_from_video(assets_path, save_path, chessboard_dims, square_size, frames_to_use, save_to_file=True):
     """
     Calibrates the camera using a video file containing chessboard patterns.
 
     Args:
         assets_path (str): The path to the video file.
+        save_path (str): The path to save the calibration data.
         chessboard_dims (tuple): The dimensions of the chessboard pattern (rows, columns).
         square_size (float): The size of each square in the chessboard pattern.
         frames_to_use (int): The number of frames to use for calibration.
@@ -34,7 +35,7 @@ def calibrate_camera_from_video(assets_path, chessboard_dims, square_size, frame
         ValueError: If the number of frames to use is less than or equal to 0.
 
     """
-    configs_path = os.path.join("configs", "camera_calibration_iphone.json")
+    configs_path = save_path
     
     objp = np.zeros((chessboard_dims[0]*chessboard_dims[1], 3), np.float32)
     objp[:, :2] = np.mgrid[0:chessboard_dims[0], 0:chessboard_dims[1]].T.reshape(-1, 2) * square_size
@@ -116,6 +117,7 @@ def calibrate_camera_from_video(assets_path, chessboard_dims, square_size, frame
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Camera calibration from a video using a chessboard pattern.")
     parser.add_argument("video_filename", help="Path to the video file")
+    parser.add_argument("save_config_filename", help="Path to the config file")
     parser.add_argument("n", type=int, help="Number of inner corners in the chessboard pattern along the width")
     parser.add_argument("m", type=int, help="Number of inner corners in the chessboard pattern along the height")
     parser.add_argument("square_size", type=float, help="Size of a square in the chessboard (in the same units used for the calibration object's real world dimensions")
@@ -123,4 +125,4 @@ if __name__ == "__main__":
     parser.add_argument("--save_to_file", type=int, help="Save the result as file", default=True)    
     args = parser.parse_args()
     
-    calibrate_camera_from_video(args.video_filename, (args.n, args.m), args.square_size, args.frame_to_use)
+    calibrate_camera_from_video(args.video_filename, args.save_config_filename, (args.n, args.m), args.square_size, args.frame_to_use)

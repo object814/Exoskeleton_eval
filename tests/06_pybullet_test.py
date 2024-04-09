@@ -4,10 +4,10 @@ import numpy as np
 import time
 
 # Load the transformation matrices
-iphone_qr1_in_camera = np.load('data/iphone_qr1_in_camera_modified.npy')
-iphone_qr2_in_camera = np.load('data/iphone_qr2_in_camera_modified.npy')
-samsung_qr1_in_camera = np.load('data/samsung_qr1_in_camera_modified.npy')
-samsung_qr2_in_camera = np.load('data/samsung_qr2_in_camera_modified.npy')
+iphone_qr1_in_camera = np.load('data/qr1_in_iphone_0409.npy')
+iphone_qr2_in_camera = np.load('data/qr2_in_iphone_0409.npy')
+samsung_qr1_in_camera = np.load('data/qr1_in_samsung_0409.npy')
+samsung_qr2_in_camera = np.load('data/qr2_in_samsung_0409.npy')
 
 list1 = iphone_qr1_in_camera
 list2 = iphone_qr2_in_camera

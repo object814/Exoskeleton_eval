@@ -127,12 +127,7 @@ def main(calibration_video_path = None,
     # np.save("/home/object814/Workspace/Exoskeleton_eval/data/camera_dict_temp.npy", camera_dict)
     # return
     '''
-    camera_dict = np.load('data/camera_dict_modified.npy', allow_pickle=True).item()
-
-    np.save('/home/object814/Workspace/Exoskeleton_eval/data/iphone_qr1_in_camera_modified.npy', camera_dict['iphone']['QR_pose_info']['1'])
-    np.save('/home/object814/Workspace/Exoskeleton_eval/data/samsung_qr1_in_camera_modified.npy', camera_dict['samsung']['QR_pose_info']['1'])
-    np.save('/home/object814/Workspace/Exoskeleton_eval/data/iphone_qr2_in_camera_modified.npy', camera_dict['iphone']['QR_pose_info']['2'])
-    np.save('/home/object814/Workspace/Exoskeleton_eval/data/samsung_qr2_in_camera_modified.npy', camera_dict['samsung']['QR_pose_info']['2'])
+    camera_dict = np.load('data/0409_test/camera_dict_0409.npy', allow_pickle=True).item()
 
     ###### Construct camera positions with respect to the specified QR code ######
     for i in range(camera_num):
@@ -169,10 +164,10 @@ def main(calibration_video_path = None,
     camera_dict["camera1"]["QR_pose_info"]["QR1"]
     '''
 
-    np.save('/home/object814/Workspace/Exoskeleton_eval/data/iphone_qr2_in_qr1_modified.npy', camera_dict['iphone']['QR_pose_info']['2'])
-    np.save('/home/object814/Workspace/Exoskeleton_eval/data/samsung_qr2_in_qr1_modified.npy', camera_dict['samsung']['QR_pose_info']['2'])
-    np.save('/home/object814/Workspace/Exoskeleton_eval/data/iphone_camera_in_qr1_modified.npy', camera_dict['iphone']['Camera_pose'])
-    np.save('/home/object814/Workspace/Exoskeleton_eval/data/samsung_camera_in_qr1_modified.npy', camera_dict['samsung']['Camera_pose'])
+    np.save('/home/object814/Workspace/Exoskeleton_eval/data/0409_test/iphone_qr2_in_qr1.npy', camera_dict['iphone']['QR_pose_info']['2'])
+    np.save('/home/object814/Workspace/Exoskeleton_eval/data/0409_test/samsung_qr2_in_qr1.npy', camera_dict['samsung']['QR_pose_info']['2'])
+    np.save('/home/object814/Workspace/Exoskeleton_eval/data/0409_test/iphone_camera_in_qr1.npy', camera_dict['iphone']['Camera_pose'])
+    np.save('/home/object814/Workspace/Exoskeleton_eval/data/0409_test/samsung_camera_in_qr1.npy', camera_dict['samsung']['Camera_pose'])
 
     ###### synchronize the QR code poses in different cameras ######
 
@@ -211,11 +206,12 @@ def main(calibration_video_path = None,
                 basis_qr_poses_temp =\
                     {label: basis_qr_poses[label][starting_frame:starting_frame+frame_len] for label in qr_labels} # cut the basis poses
                 diff = cal_poses_diff(qr_poses, basis_qr_poses_temp) # calculate the difference between the QR code poses for this part of basis poses
-                print(f"Starting frame: {starting_frame}, Difference: {diff}")
+                print("----------------------------------------------")
+                print(f"Starting frame: \033[92m{starting_frame}\033[0m, Difference: \033[91m{diff}\033[0m")
                 if diff < min_diff:
                     min_diff = diff
                     starting_frame_best = starting_frame # record the best starting frame
-            print(f"Best starting frame for camera {camera_names[i]}: {starting_frame_best}")
+            print(f"Best starting frame for camera \033[92m{camera_names[i]}\033[0m: \033[92m{starting_frame_best}\033[0m")
             if starting_frame_best > max_frame_best:
                 max_frame_best = starting_frame_best
     

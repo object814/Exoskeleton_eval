@@ -55,6 +55,7 @@ def main(calibration_video_path = None,
 
     ###### Camera calibration ######
     for i in range(camera_num):
+        print("----------------------------------------------")
         flag = input(f"Calibrate {camera_names[i]} with video? (y/n): ")
         if flag.lower() == 'y':
             if calibration_video_path[i] is None:
@@ -85,6 +86,7 @@ def main(calibration_video_path = None,
                 path_to_calib_data = calibration_data_path[i]
 
             camera_dict[camera_names[i]]["Calibration_data_path"] = path_to_calib_data # record the path to the calibration data
+            print(f"Calibration data for \033[92m{camera_names[i]}\033[0m loaded successfully: {path_to_calib_data}")
             with open(path_to_calib_data, "r") as f:
                 data = json.load(f)
                 camera_dict[camera_names[i]]["Calibration_data"]["camera_matrix"] = np.array(data["camera_matrix"]) # record the calibration data
@@ -104,7 +106,9 @@ def main(calibration_video_path = None,
             path_to_video = calculation_video_path[i]
         
         camera_dict[camera_names[i]]["Calculation_video_path"] = path_to_video # record the path to the video
+        print("----------------------------------------------")
         print(f"Calculating QR code poses for \033[92m{camera_names[i]}\033[0m, video: {path_to_video}")
+        input("Press Enter to do calculation")
         # calculate the QR code poses for each frame
         qr_pose_info = get_qr_poses_from_video(
             path_to_video,
@@ -116,15 +120,20 @@ def main(calibration_video_path = None,
             output_json_filename=None,
             save_to_file=False)
         camera_dict[camera_names[i]]["QR_pose_info"] = qr_pose_info
-        print("##############################################")
+        print("----------------------------------------------")
         print(f"QR pose information for \033[92m{camera_names[i]}\033[0m obtained successfully: {qr_pose_info['frame_number']} frames.")
         for key, value in qr_pose_info["occlusion_frame_number"].items():
             print(f"QR label: {key}, occlusion frame number: \033[91m{value}\033[0m")
-        print("##############################################")
+        print("----------------------------------------------")
     
     ##### Debug use #####
     # save the camera_dict here as npy file
-    np.save("/home/object814/Workspace/Exoskeleton_eval/data/camera_dict_modified.npy", camera_dict)
+
+    np.save("/home/object814/Workspace/Exoskeleton_eval/data/camera_dict_0409.npy", camera_dict)
+    np.save('/home/object814/Workspace/Exoskeleton_eval/data/qr1_in_iphone_0409.npy', camera_dict['iphone']['QR_pose_info']['1'])
+    np.save('/home/object814/Workspace/Exoskeleton_eval/data/qr2_in_iphone_0409.npy', camera_dict['iphone']['QR_pose_info']['2'])
+    np.save('/home/object814/Workspace/Exoskeleton_eval/data/qr1_in_samsung_0409.npy', camera_dict['samsung']['QR_pose_info']['1'])
+    np.save('/home/object814/Workspace/Exoskeleton_eval/data/qr2_in_samsung_0409.npy', camera_dict['samsung']['QR_pose_info']['2'])
     return
 
     ###### Construct camera positions with respect to the specified QR code ######
@@ -225,13 +234,23 @@ def main(calibration_video_path = None,
     #     print(f"QR code poses for \033[92m{camera_names[i]}\033[0m saved successfully.")
 
 if __name__ == "__main__":
+    # main(calibration_video_path = [None, None], 
+    #      calibration_data_path = ["configs/camera_calibration_iphone.json", "configs/camera_calibration.json"], 
+    #      calib_chessboard_size = (8,6), 
+    #      calib_chessboard_square_size = 0.0382, 
+    #      calculation_video_path = ["/home/object814/Videos/iphone_1.mp4", "/home/object814/Videos/samsung_1.mp4"], 
+    #      camera_num = 2, 
+    #      camera_names = ["iphone", "samsung"], 
+    #      qr_labels = ["1", "2"], 
+    #      qr_sizes = [0.1424, 0.0755], 
+    #      base_qr_label = "1")
     main(calibration_video_path = [None, None], 
-         calibration_data_path = ["configs/camera_calibration_iphone.json", "configs/camera_calibration.json"], 
+         calibration_data_path = ["configs/camera_calibration_iphone.json", "configs/camera_calibration_samsung.json"], 
          calib_chessboard_size = (8,6), 
          calib_chessboard_square_size = 0.0382, 
-         calculation_video_path = ["/home/object814/Videos/iphone_1.mp4", "/home/object814/Videos/samsung_1.mp4"], 
+         calculation_video_path = ["/home/object814/Videos/iphone.MOV", "/home/object814/Videos/samsung.mp4"], 
          camera_num = 2, 
          camera_names = ["iphone", "samsung"], 
          qr_labels = ["1", "2"], 
-         qr_sizes = [0.1424, 0.0755], 
+         qr_sizes = [0.143, 0.076], 
          base_qr_label = "1")

@@ -41,6 +41,7 @@ def visualize_micro_qr_codes_in_video(video_path, scale_factor=0.5):
 
             # Label each corner
             for i, corner in enumerate(polygon):
+                print(tuple(corner))
                 cv2.putText(frame, corner_labels[i], tuple(corner), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 2)
 
             # Put the Micro QR code's data as text near the first corner
@@ -66,5 +67,5 @@ def visualize_micro_qr_codes_in_video(video_path, scale_factor=0.5):
     cv2.destroyAllWindows()
 
 # Example usage
-video_path = '/home/object814/Videos/samsung_1.mp4'
+video_path = '/home/object814/Videos/iphone_test_2.MOV'
 visualize_micro_qr_codes_in_video(video_path, scale_factor=0.5)  # Adjust scale_factor as needed
