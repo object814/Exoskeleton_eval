@@ -3,9 +3,11 @@ import json
 import pprint
 import os
 import sys
+from scipy.spatial.transform import Rotation as R
+from scipy.spatial.transform import Slerp
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
 from utils.camera_calibration import calibrate_camera_from_video
-from utils.cal_poses_diff import cal_poses_diff, cal_poses_diff_fro
+from utils.cal_poses_diff import cal_poses_diff
 from utils.get_qr_pose import get_qr_poses_from_video
 from utils.get_camera_pose import get_camera_pose_in_qr_frame
 
@@ -23,6 +25,9 @@ def is_similar(pose1, pose2, threshold_trans=0.05, threshold_rot=0.15):
         flag: True if the poses are similar, False otherwise.
     """
 
+    pose1 = np.array(pose1)
+    pose2 = np.array(pose2)
+
     # Extract translational components and calculate difference
     t1 = pose1[:3, 3]
     t2 = pose2[:3, 3]
@@ -39,6 +44,59 @@ def is_similar(pose1, pose2, threshold_trans=0.05, threshold_rot=0.15):
         return True
     else:
         return False
+
+def interpolate_transform(start_T, end_T, steps):
+    """
+    Performs linear interpolation on transformation matrices.
+
+    Args:
+        start_T (np.array): The starting 4x4 transformation matrix.
+        end_T (np.array): The ending 4x4 transformation matrix.
+        steps (int): The number of intermediate matrices to be outputted.
+
+    Returns:
+        list: A list of interpolated 4x4 transformation matrices, including the start and end matrices.
+    """
+    start_T = np.array(start_T)
+    end_T = np.array(end_T)
+
+    # Initialize the list of interpolated matrices, starting with the start matrix
+    interpolated_matrices = [start_T]
+    
+    # Calculate the step increment for translation and rotation (quaternion)
+    start_translation, end_translation = start_T[:3, 3], end_T[:3, 3]
+    translation_step = (end_translation - start_translation) / (steps + 1)
+    
+    start_rotation = R.from_matrix(start_T[:3, :3])
+    end_rotation = R.from_matrix(end_T[:3, :3])
+
+    # Create a spherical linear interpolation object
+    key_rots = R.from_quat(np.vstack([start_rotation.as_quat(), end_rotation.as_quat()]))
+    key_times = [0, 1]
+    slerp = Slerp(key_times, key_rots)
+
+    times = np.linspace(0, 1, steps + 2)
+    interp_rots = slerp(times)
+    
+    for step in range(1, steps + 1):
+        # Interpolate translation
+        interpolated_translation = start_translation + translation_step * step
+        
+        # Construct the interpolated transformation matrix
+        interpolated_T = np.eye(4)
+        interpolated_T[:3, :3] = interp_rots[step].as_matrix()
+        interpolated_T[:3, 3] = interpolated_translation
+        
+        # Append the interpolated transformation matrix to the list
+        interpolated_matrices.append(interpolated_T)
+    
+    # Append the end matrix to the list of interpolated matrices
+    interpolated_matrices.append(end_T)
+
+    interpolated_matrices.pop(0) # remove the first matrix
+    interpolated_matrices.pop(-1) # remove the last matrix
+     
+    return interpolated_matrices
     
 def ave_rotation(R_list):
     """
@@ -79,16 +137,38 @@ def ave_pose(T_list):
     """
 
     # Extract translational components and calculate average
-    ave_t = np.mean([T[:3, 3] for T in T_list], axis=0)
+    ave_t = np.mean([np.array(T)[:3, 3] for T in T_list], axis=0)
 
     # Extract rotational components and calculate average
-    ave_R = ave_rotation([T[:3, :3] for T in T_list])
+    ave_R = ave_rotation([np.array(T)[:3, :3] for T in T_list])
 
     ave_T = np.eye(4)
     ave_T[:3, :3] = ave_R
     ave_T[:3, 3] = ave_t
 
     return ave_T
+
+def consecutive_idx(index_list):
+    # Initialize an empty list to hold the result
+    grouped_indexes = []
+    # Initialize a temporary list to hold consecutive indexes
+    temp_list = []
+    # Iterate through the list of indexes
+    for i, index in enumerate(index_list):
+        # Add the first index to the temporary list
+        if i == 0:
+            temp_list.append(index)
+        else:
+            # Check if the current index is consecutive to the previous index
+            if index == index_list[i-1] + 1:
+                temp_list.append(index)
+            else:
+                # If not consecutive, add the temp_list to the grouped_indexes and start a new temp_list
+                grouped_indexes.append(temp_list)
+                temp_list = [index]
+    # Add the last temp_list to the grouped_indexes
+    grouped_indexes.append(temp_list)
+    return grouped_indexes
 
 def main(calibration_video_path = None,
          calibration_data_path = None,
@@ -287,7 +367,7 @@ def main(calibration_video_path = None,
             for starting_frame in range(0, basis_len-frame_len+1):
                 basis_qr_poses_temp =\
                     {label: basis_qr_poses[label][starting_frame:starting_frame+frame_len] for label in qr_labels} # cut the basis poses
-                diff = cal_poses_diff_fro(qr_poses, basis_qr_poses_temp) # calculate the difference between the QR code poses for this part of basis poses
+                diff = cal_poses_diff(qr_poses, basis_qr_poses_temp) # calculate the difference between the QR code poses for this part of basis poses
                 print("----------------------------------------------")
                 print(f"Starting frame: \033[92m{starting_frame}\033[0m, Difference: \033[91m{diff}\033[0m")
                 if diff < min_diff:
@@ -328,8 +408,8 @@ def main(calibration_video_path = None,
                 camera_dict[camera_names[i]]["QR_pose_info"][label] =\
                     camera_dict[camera_names[i]]["QR_pose_info"][label][starting_frame:ending_frame]
 
-    np.save('/home/object814/Workspace/Exoskeleton_eval/data/0409_test/iphone_qr2_in_qr1_fro.npy', camera_dict['iphone']['QR_pose_info']['2'])
-    np.save('/home/object814/Workspace/Exoskeleton_eval/data/0409_test/samsung_qr2_in_qr1_fro.npy', camera_dict['samsung']['QR_pose_info']['2'])
+    np.save('/home/object814/Workspace/Exoskeleton_eval/data/0409_test/iphone_qr2_in_qr1.npy', camera_dict['iphone']['QR_pose_info']['2'])
+    np.save('/home/object814/Workspace/Exoskeleton_eval/data/0409_test/samsung_qr2_in_qr1.npy', camera_dict['samsung']['QR_pose_info']['2'])
     
     '''
     Now the list of the transformation matrices of QR code labeled "QR1" 
@@ -365,8 +445,8 @@ def main(calibration_video_path = None,
     max_rot_speed = 1.57 # maximum rotational speed in rad/s
     for label in qr_labels:
         for i in range(1, frame_num_sync):
-            if not np.equal(unified_qr_poses[label][i], np.identity(4)) and\
-               not np.equal(unified_qr_poses[label][i-1], np.identity(4)):
+            if not np.array_equal(unified_qr_poses[label][i], np.identity(4)) and\
+               not np.array_equal(unified_qr_poses[label][i-1], np.identity(4)):
                 if not is_similar(unified_qr_poses[label][i-1],
                                 unified_qr_poses[label][i],
                                 threshold_trans=max_trans_speed/frame_rate,
@@ -376,9 +456,34 @@ def main(calibration_video_path = None,
     
     ###### interpolate all identity matrices ######
     for label in qr_labels:
-        for i in range(1, frame_num_sync-1):
-            if np.equal(unified_qr_poses[label][i], np.identity(4)):
-                unified_qr_poses[label][i] = (unified_qr_poses[label][i-1] + unified_qr_poses[label][i+1]) / 2
+        identity_idx = [] # positions of identity matrices
+        for i in range(frame_num_sync):
+            if np.array_equal(unified_qr_poses[label][i], np.identity(4)):
+                identity_idx.append(i)
+        identity_idx_grouped = consecutive_idx(identity_idx)
+        for idx_group in identity_idx_grouped:
+            if len(idx_group) > 1: # mupltiple identity matrices
+                start_idx = idx_group[0]
+                end_idx = idx_group[-1]
+                if start_idx == 0: # if the first frame is identity matrix
+                    for idx in range(end_idx+1):
+                        unified_qr_poses[label][idx] = unified_qr_poses[label][end_idx+1]
+                elif end_idx == frame_num_sync-1: # if the last frame is identity matrix
+                    for idx in range(start_idx, frame_num_sync):
+                        unified_qr_poses[label][idx] = unified_qr_poses[label][start_idx-1]
+                else:
+                    interpolated_transforms = interpolate_transform(unified_qr_poses[label][start_idx-1], unified_qr_poses[label][end_idx+1], len(idx_group))
+                    for idx in range(len(idx_group)):
+                        unified_qr_poses[label][idx_group[idx]] = interpolated_transforms[idx]
+            elif len(idx_group) == 1: # just one identity matrix
+                if idx_group[0] == 0: # if the first frame is identity matrix
+                    unified_qr_poses[label][0] = unified_qr_poses[label][1]
+                elif idx_group[0] == frame_num_sync-1: # if the last frame is identity matrix
+                    unified_qr_poses[label][frame_num_sync-1] = unified_qr_poses[label][frame_num_sync-2]
+                else:
+                    unified_qr_poses[label][idx_group[0]] = ave_pose([unified_qr_poses[label][idx_group[0]-1], unified_qr_poses[label][idx_group[0]+1]])
+
+    np.save('/home/object814/Workspace/Exoskeleton_eval/data/0409_test/qr2_final_poses.npy', unified_qr_poses['2'])   
 
 
 if __name__ == "__main__":
