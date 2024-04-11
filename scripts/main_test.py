@@ -436,7 +436,7 @@ def main(calibration_video_path = None,
             if len(qr_poses) == 0: # no valid pose in all cameras
                 unified_qr_poses[label].append(np.identity(4))
             if len(qr_poses) == 1: # only one valid pose
-                unified_qr_poses[label].append(qr_poses[0])
+                unified_qr_poses[label].append(np.array(qr_poses[0]))
             if len(qr_poses) >= 2: # multiple valid poses
                 unified_qr_poses[label].append(ave_pose(qr_poses)) # calculate the average pose
     
@@ -483,8 +483,8 @@ def main(calibration_video_path = None,
                 else:
                     unified_qr_poses[label][idx_group[0]] = ave_pose([unified_qr_poses[label][idx_group[0]-1], unified_qr_poses[label][idx_group[0]+1]])
 
-    np.save('/home/object814/Workspace/Exoskeleton_eval/data/0409_test/qr2_final_poses.npy', unified_qr_poses['2'])   
-
+    np.save('/home/object814/Workspace/Exoskeleton_eval/data/0409_test/qr2_final_poses.npy', unified_qr_poses)   
+    print(unified_qr_poses['2'][0:10]) # 10 transformation matrices for QR code 2
 
 if __name__ == "__main__":
     main(calibration_video_path = [None, None], 
