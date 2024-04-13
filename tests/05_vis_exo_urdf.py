@@ -93,60 +93,6 @@ def set_trunk_frame_pose(direction, position, body_id, p_id):
     # Update the base link pose in PyBullet
     p_id.resetBasePositionAndOrientation(body_id, position_adjusted, quaternion)
 
-
-# def calculate_and_transform(direction_ref, direction_target, direction_new_ref):
-#     """
-#     Calculates and transforms a direction vector from a reference direction to a target direction.
-
-#     Args:
-#     - direction_ref: numpy array representing the reference direction
-#     - direction_target: numpy array representing the target direction
-#     - direction_new_ref: numpy array representing the direction to be transformed
-
-#     Returns:
-#     - direction_transformed: numpy array representing the transformed direction
-
-#     The function normalizes the input vectors to ensure they represent directions.
-#     It then calculates the rotation from the reference direction to the target direction.
-#     Finally, it applies the same rotation to the direction_new_ref vector and returns the transformed direction.
-#     """
-#     # Normalize vectors to ensure they represent directions
-#     direction_ref = direction_ref / np.linalg.norm(direction_ref)
-#     direction_target = direction_target / np.linalg.norm(direction_target)
-#     direction_new_ref = direction_new_ref / np.linalg.norm(direction_new_ref)
-
-#     # Calculate rotation from direction_ref to direction_target
-#     axis_rotate = np.cross(direction_ref, direction_target)
-#     angle_rotate = np.arccos(np.dot(direction_ref, direction_target))
-
-#     # Construct rotation matrix to transform direction_ref to direction_target
-#     R_rotate = rotation_matrix_from_axis_angle(axis_rotate, angle_rotate)
-
-#     # Apply the same rotation to direction_new_ref
-#     direction_transformed = np.dot(R_rotate, direction_new_ref)
-
-#     return direction_transformed
-
-# def rotation_matrix_from_axis_angle(axis, angle):
-#     """
-#     Compute a rotation matrix from an axis and an angle.
-
-#     Args:
-#     axis (numpy.ndarray): The axis of rotation.
-#     angle (float): The angle of rotation in radians.
-
-#     Returns:
-#     numpy.ndarray: The rotation matrix.
-
-#     """
-#     axis = axis / np.linalg.norm(axis)
-#     a = np.cos(angle / 2)
-#     b, c, d = -axis * np.sin(angle / 2)
-    
-#     return np.array([[a*a + b*b - c*c - d*d, 2 * (b*c - a*d), 2 * (b*d + a*c)],
-#                      [2 * (b*c + a*d), a*a + c*c - b*b - d*d, 2 * (c*d - a*b)],
-#                      [2 * (b*d - a*c), 2 * (c*d + a*b), a*a + d*d - b*b - c*c]])
-
 def main(urdf_path, poses_path):
     # Read poses from file
     poses_vision = np.load(poses_path, allow_pickle=True).item()
