@@ -1,264 +1,267 @@
 import pybullet as p
-import pybullet_data
 import numpy as np
-import time
-from scipy.spatial.transform import Rotation as R
-import random
+from scipy.optimize import minimize
 
-def draw_frame(object_id, link_id, frame_length=0.1, lifetime=0):
+def get_current_axis_dir(exo_id, link_id, axis, physicsClientId):
     # Draws XYZ frame for a given object and link ID.
-    link_state = p.getLinkState(object_id, link_id, computeForwardKinematics=True)
+    link_state = p.getLinkState(exo_id, link_id, computeForwardKinematics=True, physicsClientId=physicsClientId)
     link_position = link_state[4]  # World position
     link_orientation = link_state[5]  # World orientation
 
     # Axes directions in local frame
-    x_axis = [frame_length, 0, 0]
-    y_axis = [0, frame_length, 0]
-    z_axis = [0, 0, frame_length]
+    if axis == 'y':
+        axis = [0, 1, 0]
+    if axis == '-y':
+        axis = [0, -1, 0]
 
     # Transform axes to world frame
-    x_axis_world = p.multiplyTransforms(link_position, link_orientation, x_axis, [0, 0, 0, 1])[0]
-    y_axis_world = p.multiplyTransforms(link_position, link_orientation, y_axis, [0, 0, 0, 1])[0]
-    z_axis_world = p.multiplyTransforms(link_position, link_orientation, z_axis, [0, 0, 0, 1])[0]
+    current_dir = p.multiplyTransforms(link_position, link_orientation, axis, [0, 0, 0, 1])[0]
 
-    # Draw the axes in world frame
-    p.addUserDebugLine(link_position, x_axis_world, [1, 0, 0], lifeTime=lifetime, lineWidth=2)
-    p.addUserDebugLine(link_position, y_axis_world, [0, 1, 0], lifeTime=lifetime, lineWidth=2)
-    p.addUserDebugLine(link_position, z_axis_world, [0, 0, 1], lifeTime=lifetime, lineWidth=2)
+    # Normalize the direction vector
+    current_dir = np.array(current_dir)
+    current_dir /= np.linalg.norm(current_dir)
+    # p.addUserDebugLine(link_position, current_dir, [1, 0, 0], lifeTime=0, lineWidth=5, physicsClientId=physicsClientId)
 
-def get_initial_direction_and_position(object_id, link_id):
-    # Retrieve link state to get initial position and orientation
-    link_state = p.getLinkState(object_id, link_id, computeForwardKinematics=True)
-    link_position = link_state[4]  # World position of the link
-    link_orientation = link_state[5]  # World orientation of the link as a quaternion
+    return current_dir
 
-    # Convert link orientation from quaternion to rotation matrix
-    rotation_matrix = R.from_quat(link_orientation).as_matrix()
+def cost_function(joint_angles, target_opt_dir, opt_link_name, opt_axis, opt_joints, link_index, exo_id, client_id):
+    # Set joint angles
+    for i, angle in enumerate(joint_angles):
+        p.resetJointState(exo_id, opt_joints[i], angle, physicsClientId=client_id)
+        # p.setJointMotorControl2(exo_id, opt_joints[i], p.POSITION_CONTROL, targetPosition=angle, physicsClientId=client_id)
+    # p.stepSimulation(physicsClientId=client_id)
 
-    pose = np.eye(4)
-    pose[:3, 3] = np.array(link_position)
-    pose[:3, :3] = np.array(rotation_matrix)
+    # Get the direction of the optimization link
+    opt_dir = get_current_axis_dir(exo_id, link_index[opt_link_name], opt_axis, client_id)
 
-    return pose
+    # Calculate cost
+    cost = 1 - np.dot(opt_dir, target_opt_dir)
+    cost = cost * 100
 
-def set_trunk_frame_pose(transformation_matrix, object_id, pb_client):
-    """
-    Sets the pose of the trunk frame based on the given transformation matrix and basis matrix.
-
-    Args:
-        transformation_matrix (numpy.ndarray): The transformation matrix representing the initial pose of the trunk frame.
-        object_id (int): The ID of the object whose pose needs to be set.
-        pb_client (PyBulletClient): The PyBullet client object used to interact with the physics simulation.
-
-    Returns:
-        None
-    """
-    # Extract initial position and orientation from the transformation matrix
-    initial_position = transformation_matrix[:3, 3]
-    initial_orientation_matrix = transformation_matrix[:3, :3]
-    
-    # Convert initial orientation matrix to quaternion using SciPy
-    initial_orientation_quat = R.from_matrix(initial_orientation_matrix).as_quat()
-    
-    # Apply basis transformation
-    '''
-    The rotation in basis transformation aligns the qr code frame definition with the pybullet trunk frame definition
-    The translation in basis transformation moves the trunk frame origin to the base frame origin
-    '''
-    basis_matrix = np.array([
-        [ 0, -1,  0, 0.19827],
-        [ 0,  0,  1, -0.0004412],
-        [-1,  0,  0, 0.18652],
-        [ 0,  0,  0, 1]
-    ])
-    basis_position = basis_matrix[:3, 3]
-    basis_orientation_matrix = basis_matrix[:3, :3]
-    
-    # Convert basis orientation matrix to quaternion using SciPy
-    basis_orientation_quat = R.from_matrix(basis_orientation_matrix).as_quat()
-    
-    # Calculate the final position by adding the basis position
-    final_position = initial_position + basis_position
-    
-    # For orientation, quaternion multiplication is needed to apply the rotation
-    # SciPy can handle the quaternion multiplication
-    final_orientation = R.from_quat(initial_orientation_quat) * R.from_quat(basis_orientation_quat)
-    final_orientation_quat = final_orientation.as_quat()
-    
-    # Use PyBullet to set the object's pose
-    pb_client.resetBasePositionAndOrientation(object_id, final_position, final_orientation_quat)
-
-def cost_function(robot_id, link_index, target_dir, current_axis_name):
-    current_dir = get_current_axis(robot_id, link_index, current_axis_name)
-    cost = 1 - np.dot(current_dir, target_dir)
     return cost
 
-def get_kinematic_chain(robot_id, link_index):
-    """ Return a list of joint indices that are part of the kinematic chain leading to the specified link. """
-    kinematic_chain = []
-    while link_index != -1:  # -1 indicates the base
-        joint_info = p.getJointInfo(robot_id, link_index)
-        if joint_info[2] != p.JOINT_FIXED:  # Exclude fixed joints
-            kinematic_chain.append(joint_info[0])
-        link_index = joint_info[16]  # Parent link index
-    return kinematic_chain[::-1]  # Return reversed list to start from the base
-
-def optimize_joints(robot_id, link_index, axis, iterations, target_dir):
-    kinematic_chain = get_kinematic_chain(robot_id, link_index)
-    target_dir = np.array(target_dir) / np.linalg.norm(target_dir)
-    learning_rate = 0.005  # Reduced learning rate
-    damping = 0.1  # Damping factor
-    gradient_clip = 0.05  # Maximum gradient step
-
-    for _ in range(iterations):
-        gradients = np.zeros(len(kinematic_chain))
-
-        for idx, joint_index in enumerate(kinematic_chain):
-            original_angle = p.getJointState(robot_id, joint_index)[0]
-            p.setJointMotorControl2(robot_id, joint_index, p.POSITION_CONTROL, targetPosition=original_angle + 0.01)
-            p.stepSimulation()
-            cost_perturbed = cost_function(robot_id, link_index, target_dir, axis)
-
-            p.setJointMotorControl2(robot_id, joint_index, p.POSITION_CONTROL, targetPosition=original_angle)
-            p.stepSimulation()
-            current_cost = cost_function(robot_id, link_index, target_dir, axis)
-
-            gradient = (cost_perturbed - current_cost) / 0.01
-            gradients[idx] = gradient
-
-        # Apply gradient clipping and damping
-        gradients = np.clip(gradients, -gradient_clip, gradient_clip)
-        for idx, joint_index in enumerate(kinematic_chain):
-            original_angle = p.getJointState(robot_id, joint_index)[0]
-            change = -learning_rate * gradients[idx] - damping * original_angle
-            new_angle = original_angle + change
-            p.setJointMotorControl2(robot_id, joint_index, p.POSITION_CONTROL, targetPosition=new_angle)
-
-        p.stepSimulation()
-
-    final_dir = get_current_axis(robot_id, link_index, axis)
-    error = np.arccos(np.clip(np.dot(final_dir, target_dir), -1.0, 1.0))
-
-    print(f"Optimization complete for {axis} axis on link index {link_index}.")
-    print(f"Final direction: {final_dir}")
-    print(f"Final error: {error/np.pi*180:.2f} degrees")
-
-def draw_frame(object_id, link_id, frame_length=0.1, lifetime=0):
+def draw_axis(exo_id, link_id, axis, physicsClientId, frame_length=0.1, lifetime=0):
     # Draws XYZ frame for a given object and link ID.
-    link_state = p.getLinkState(object_id, link_id, computeForwardKinematics=True)
+    link_state = p.getLinkState(exo_id, link_id, computeForwardKinematics=True, physicsClientId=physicsClientId)
     link_position = link_state[4]  # World position
     link_orientation = link_state[5]  # World orientation
 
     # Axes directions in local frame
-    x_axis = [frame_length, 0, 0]
-    y_axis = [0, frame_length, 0]
-    z_axis = [0, 0, frame_length]
+    if axis == 'y':
+        axis = [0, frame_length, 0]
+    if axis == '-y':
+        axis = [0, -frame_length, 0]
 
     # Transform axes to world frame
-    x_axis_world = p.multiplyTransforms(link_position, link_orientation, x_axis, [0, 0, 0, 1])[0]
-    y_axis_world = p.multiplyTransforms(link_position, link_orientation, y_axis, [0, 0, 0, 1])[0]
-    z_axis_world = p.multiplyTransforms(link_position, link_orientation, z_axis, [0, 0, 0, 1])[0]
+    axis_world = p.multiplyTransforms(link_position, link_orientation, axis, [0, 0, 0, 1])[0]
 
     # Draw the axes in world frame
-    p.addUserDebugLine(link_position, x_axis_world, [1, 0, 0], lifeTime=lifetime, lineWidth=2)
-    p.addUserDebugLine(link_position, y_axis_world, [0, 1, 0], lifeTime=lifetime, lineWidth=2)
-    p.addUserDebugLine(link_position, z_axis_world, [0, 0, 1], lifeTime=lifetime, lineWidth=2)
+    p.addUserDebugLine(link_position, axis_world, [0, 1, 0], lifeTime=lifetime, lineWidth=2, physicsClientId=physicsClientId)
 
-def randomize_joints_and_compute_direction(robot_id, link_index, axis):
-    num_joints = p.getNumJoints(robot_id)
-    joint_indices = range(num_joints)
+def get_kinematic_chain(exo_id, link_id, physicsClientId):
+    kinematic_chain = []
+    kinematic_chain_names = []
+    while link_id != -1:  # -1 indicates the base
+        joint_info = p.getJointInfo(exo_id, link_id, physicsClientId=physicsClientId)
+        if joint_info[2] != p.JOINT_FIXED:  # Exclude fixed joints
+            kinematic_chain.append(joint_info[0])
+            kinematic_chain_names.append(joint_info[1].decode('utf-8'))
+        link_id = joint_info[16]  # Parent link index
+    kinematic_chain_names[::-1]
+    print(f"Kinematic chain: {kinematic_chain_names}")
+    return kinematic_chain[::-1]  # Return reversed list to start from the base
 
-    # Randomize joint angles
-    for joint_index in joint_indices:
-        joint_info = p.getJointInfo(robot_id, joint_index)
-        if joint_info[2] == p.JOINT_REVOLUTE:
-            lower_limit = joint_info[8]
-            upper_limit = joint_info[9]
-            if upper_limit > lower_limit:  # Check if the joint has limits
-                random_angle = random.uniform(lower_limit, upper_limit)
-                p.resetJointState(robot_id, joint_index, random_angle)
+def optimize_joints(target_opt_dir, opt_link_name, opt_axis, opt_joints, link_index, opt_exo_id, opt_client, iterations=100, learning_rate=0.01, threshold=0.01):
+    # Normalize the target direction vector
+    target_opt_dir = np.array(target_opt_dir) / np.linalg.norm(target_opt_dir)
+    # Random initial joint angles
+    # initial_opt_joint_angles = np.random.uniform(-np.pi, np.pi, len(opt_joints))
+    # for i in range(len(opt_joints)):
+    #     p.resetJointState(opt_exo_id, opt_joints[i], initial_opt_joint_angles[i], physicsClientId=opt_client)
+    # Hyperparameters
+    learning_rate = learning_rate
+    threshold = threshold
 
-    # Compute the forward kinematics to get the direction of the axis
-    p.stepSimulation()
-    current_direction = get_current_axis(robot_id, link_index, axis)
-    return current_direction
+    for _ in range(iterations):
+        gradients = np.zeros(len(opt_joints)) # Initialize gradients
+        current_opt_joint_angles = []
+        for joint_id in opt_joints:
+            current_opt_joint_angles.append(p.getJointState(opt_exo_id, joint_id, physicsClientId=opt_client)[0])
 
-def get_current_axis(robot_id, link_index, axis):
-    """Returns the current global direction vector of the specified local axis of the link."""
-    _, link_orient = p.getLinkState(robot_id, link_index)[:2]
-    axis_vectors = {
-        'x': np.array([1, 0, 0]),
-        'y': np.array([0, 1, 0]),
-        'z': np.array([0, 0, 1]),
-        '-x': np.array([-1, 0, 0]),
-        '-y': np.array([0, -1, 0]),
-        '-z': np.array([0, 0, -1])
-    }
-    local_axis = axis_vectors[axis]
-    current_axis = np.array(p.rotateVector(link_orient, local_axis))
-    return current_axis
+        for i in range(len(opt_joints)):
+            perturbed_opt_joint_angles = current_opt_joint_angles.copy()
+            perturbed_opt_joint_angles[i] += 0.01
+            perturbed_cost = cost_function(perturbed_opt_joint_angles, 
+                                           target_opt_dir, 
+                                           opt_link_name, 
+                                           opt_axis, 
+                                           opt_joints, 
+                                           link_index, 
+                                           opt_exo_id, 
+                                           opt_client)
+            
+            current_cost = cost_function(current_opt_joint_angles,
+                                         target_opt_dir,
+                                         opt_link_name,
+                                         opt_axis,
+                                         opt_joints,
+                                         link_index,
+                                         opt_exo_id,
+                                         opt_client)
 
+            gradient = (perturbed_cost - current_cost) / 0.01
+            gradients[i] = gradient
 
-def main(urdf_path):
-    p.connect(p.GUI)
-    p.setGravity(0, 0, -9.81)
-    p.setTimeStep(1/240)  # Assuming 240 Hz simulation frequency
-
-    exo_id = p.loadURDF(urdf_path, useFixedBase=True)
-
-    link_names = ['trunk', 'rightThigh', 'leftThigh']
-    link_ids = {p.getJointInfo(exo_id, i)[12].decode('utf-8'): i for i in range(p.getNumJoints(exo_id)) if p.getJointInfo(exo_id, i)[12].decode('utf-8') in link_names}
-    initial_positions = [p.getJointState(exo_id, i)[0] for i in range(p.getNumJoints(exo_id))]
-    print(link_ids)
-    
-    # Declare the link name and axis for optimization
-    link_name = input("Enter the link name to optimize (e.g., r, l): ")
-    if link_name == 'r':
-        link_name = 'rightThigh'
-        axis = '-y'
-    elif link_name == 'l':
-        link_name = 'leftThigh'
-        axis = 'y'
-
-    # Check if the link name is valid, if not, ask the user to input again
-    while link_name not in link_ids:
-        print("Invalid link name. Please enter a valid link name.")
-        link_name = input("Enter the link name to optimize (e.g., rightThigh, leftThigh): ")
-
-    # Run simulation until the user confirms to capture the pose
-    while True:
-        p.stepSimulation()
-        time.sleep(0.01)
-        current_direction = get_current_axis(exo_id, link_ids[link_name], axis)
-        print("Captured direction for optimization:", current_direction)
-        # wait until the user presses 'y' to capture the pose
-        keys = p.getKeyboardEvents()
-        if ord('y') in keys and keys[ord('y')] & p.KEY_WAS_TRIGGERED:
+        # Update joint angles
+        new_opt_joint_angles = current_opt_joint_angles - learning_rate * gradients
+        # for i in range(len(opt_joints)):
+        #     p.resetJointState(opt_exo_id, opt_joints[i], new_opt_joint_angles[i], physicsClientId=opt_client)
+        # Calculate cost
+        cost = cost_function(new_opt_joint_angles, target_opt_dir, opt_link_name, opt_axis, opt_joints, link_index, opt_exo_id, opt_client)
+        if cost < threshold:
+            print(f"Optimization converged at iteration {_}")
             break
 
-    current_direction = get_current_axis(exo_id, link_ids[link_name], axis)
-    print("Captured direction for optimization:", current_direction)
+    # Calculate final error
+    final_opt_joint_angles = []
+    for joint_id in opt_joints:
+            final_opt_joint_angles.append(p.getJointState(opt_exo_id, joint_id, physicsClientId=opt_client)[0])
+    final_cost = cost_function(final_opt_joint_angles, target_opt_dir, opt_link_name, opt_axis, opt_joints, link_index, opt_exo_id, opt_client)
+    final_dir = get_current_axis_dir(opt_exo_id, link_index[opt_link_name], opt_axis, opt_client)
+    angle_radians = np.arccos(np.clip(np.dot(final_dir, target_opt_dir) / (np.linalg.norm(final_dir) * np.linalg.norm(target_opt_dir)), -1.0, 1.0))
+    angle_degrees = angle_radians / np.pi * 180
 
-    # Capture the current joint angles and direction for the specified link and axis
-    target_joint_angles = [p.getJointState(exo_id, i)[0] for i in range(p.getNumJoints(exo_id))]
+    print(f"Final cost: {final_cost}")
+    print(f"Final direction: {final_dir}")
+    print(f"Final difference: {angle_degrees} degrees")
 
-    # Reset the robot to initial positions
-    for i in range(p.getNumJoints(exo_id)):
-        p.resetJointState(exo_id, i, initial_positions[i])
-    p.stepSimulation()  # One step to apply the reset states
+    return final_opt_joint_angles
 
-    input("Press Enter to start the optimization process...")
+# Pybullet initialization
+vis_client = p.connect(p.GUI)
+p.setGravity(0, 0, -9.81, physicsClientId=vis_client)
+p.setTimeStep(1/240, physicsClientId=vis_client)
 
-    # Optimization
-    for i in range(10): # optimize for ten times
-        optimize_joints(exo_id, link_ids[link_name], axis, 1000, current_direction.tolist())
-        input("Press Enter to continue...")
-        for i in range(p.getNumJoints(exo_id)):
-            p.resetJointState(exo_id, i, initial_positions[i])
-        p.stepSimulation()  # One step to apply the reset states
+opt_client = p.connect(p.DIRECT)
+p.setGravity(0, 0, -9.81, physicsClientId=opt_client)
+p.setTimeStep(1/240, physicsClientId=opt_client)
+
+# Load URDF model
+vis_exo_id = p.loadURDF('data/exo_model/urdf/exo_w_virtual_frame.urdf', useFixedBase=True, physicsClientId=vis_client)
+opt_exo_id = p.loadURDF('data/exo_model/urdf/exo_w_virtual_frame.urdf', useFixedBase=True, physicsClientId=opt_client)
+
+# Declare links to be optimized
+link_names = ['trunk', 'rightThigh', 'leftThigh']
+
+# Get link indeces
+link_index = {}
+for link_name in link_names:
+    for i in range(p.getNumJoints(vis_exo_id, physicsClientId=vis_client)):
+        if p.getJointInfo(vis_exo_id, i, vis_client)[12].decode('utf-8') == link_name:
+            link_index[link_name] = i
+            break
+print(link_index)
+
+# Record initial joint positions
+initial_positions = [p.getJointState(vis_exo_id, i, physicsClientId=vis_client)[0] for i in range(p.getNumJoints(vis_exo_id, physicsClientId=vis_client))]
+
+# Declare optimization link
+opt_link_name = input("Enter the link name to optimize: ")
+if opt_link_name == 'r':
+    opt_link_name = 'rightThigh'
+    opt_axis = '-y'
+elif opt_link_name == 'l':
+    opt_link_name = 'leftThigh'
+    opt_axis = 'y'
+
+# Find the kinematic chain for the optimization link
+kinematic_chain = get_kinematic_chain(vis_exo_id, link_index[opt_link_name], physicsClientId=vis_client)
+opt_joints = kinematic_chain
+
+initial_target_opt_dir = get_current_axis_dir(vis_exo_id, link_index[opt_link_name], opt_axis, physicsClientId=vis_client)
+print(f'Initial target direction: {initial_target_opt_dir}')
+input('PAUSE')
+
+# Run simulation to let user move the robot to desired pose
+while True:
+    p.stepSimulation(physicsClientId=vis_client)
+    # print once
+    print('Move the robot to the desired pose and press "Enter" to start optimization.')
+    # draw the axis
+    draw_axis(vis_exo_id, link_index[opt_link_name], opt_axis, physicsClientId=vis_client)
+    keys = p.getKeyboardEvents(physicsClientId=vis_client)
+    # if user presses Enter
+    if 65309 in keys:
+        target_opt_dir = get_current_axis_dir(vis_exo_id, link_index[opt_link_name], opt_axis, physicsClientId=vis_client)
+        # print opt_joint angles
+        current_opt_joint_angles = []
+        for joint_id in opt_joints:
+            current_opt_joint_angles.append(p.getJointState(opt_exo_id, joint_id, physicsClientId=vis_client)[0])
+        p.removeAllUserDebugItems(physicsClientId=vis_client)
+        break
+
+# Reset the robot to initial pose
+for i, pos in enumerate(initial_positions):
+    p.resetJointState(vis_exo_id, i, pos, physicsClientId=vis_client)
+for i, pos in enumerate(initial_positions):
+    p.resetJointState(opt_exo_id, i, pos, physicsClientId=opt_client)
+
+print(target_opt_dir)
+print(current_opt_joint_angles)
+input('Press "Enter" to start optimization.')
+# target_opt_dir = np.array([0.13966019,  0.99002722, -0.01846987])
+# target_opt_dir = target_opt_dir / np.linalg.norm(target_opt_dir)
+# ground_truth_opt_angles = np.array([0.44922844406596635, -0.19987191331233772])
+
+''' Optimization with Scipy '''
+# random initial positions
+# print(f'Number of joints to optimize: {len(opt_joints)}')
+# initial_positions = np.random.uniform(-np.pi, np.pi, len(opt_joints))
+
+# BFGS
+# result = minimize(
+#         cost_function,
+#         initial_positions,
+#         args=(target_opt_dir, opt_link_name, opt_axis, opt_joints, link_index, opt_exo_id, opt_client),
+#         method='BFGS',
+#         options={'disp': True, 'gtol': 1e-2, 'maxiter': 1000}
+#     )
+
+# Powell
+# result = minimize(cost_function,
+#                   initial_positions,
+#                   args=(target_opt_dir, opt_link_name, opt_axis, opt_joints, link_index, opt_exo_id, opt_client), 
+#                   method='Powell',
+#                   options={'xtol': 1e-8, 'ftol': 1e-8, 'disp': True})
+
+# L-BFGS-B
+# bounds = [(-np.pi, np.pi) for _ in initial_positions]
+
+# result = minimize(cost_function,
+#                   initial_positions,
+#                   args=(target_opt_dir, opt_link_name, opt_axis, opt_joints, link_index, opt_exo_id, opt_client), 
+#                   method='L-BFGS-B',
+#                   bounds=bounds,
+#                   options={'disp': True})
+
+# Visualization
+# set joint angles to the optimized values
+# print(result.x)
+# for i, angle in enumerate(result.x):
+#         p.resetJointState(vis_exo_id, opt_joints[i], angle, physicsClientId=vis_client)
+
+''' Optimization with custom gradient descent '''
+result = optimize_joints(target_opt_dir, opt_link_name, opt_axis, opt_joints, link_index, opt_exo_id, opt_client)
+for i, angle in enumerate(result):
+        p.resetJointState(vis_exo_id, opt_joints[i], angle, physicsClientId=vis_client)
 
 
-    p.disconnect()
+# draw the target direction
+p.addUserDebugLine([0, 0, 0], target_opt_dir, [0, 1, 0], lineWidth=5, physicsClientId=vis_client) # green
+# draw the current direction
+current_dir = get_current_axis_dir(vis_exo_id, link_index[opt_link_name], opt_axis, physicsClientId=vis_client)
+p.addUserDebugLine([0, 0, 0], current_dir, [1, 0, 0], lineWidth=5, physicsClientId=vis_client) # red
 
-if __name__ == '__main__':
-    main('data/exo_model/urdf/exo_w_virtual_frame.urdf')
+# Output error
+input('Press "Enter" to exit.')
+p.disconnect()
