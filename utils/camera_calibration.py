@@ -5,11 +5,11 @@ import sys
 import json
 import argparse
 
-def visualize_chessboard_detection(frame, corners):
+def visualize_chessboard_detection(frame, chessboard_dims, corners):
     """
     Visualizes the chessboard detection by drawing corners on the frame.
     """
-    cv2.drawChessboardCorners(frame, (args.n, args.m), corners, True)
+    cv2.drawChessboardCorners(frame, chessboard_dims, corners, True)
     cv2.imshow('Chessboard Detection', frame)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
@@ -84,7 +84,7 @@ def calibrate_camera_from_video(assets_path, save_path, chessboard_dims, square_
         
         if ret:
             if not first_frame_visualized:
-                visualize_chessboard_detection(frame, corners)
+                visualize_chessboard_detection(frame, chessboard_dims, corners)
                 first_frame_visualized = True
             
             objpoints.append(objp)
@@ -99,17 +99,20 @@ def calibrate_camera_from_video(assets_path, save_path, chessboard_dims, square_
         print("Camera matrix:\n", mtx)
         print("Distortion coefficients:\n", dist)
         
-        calibration_data = {
-            "camera_matrix": mtx.tolist(),
-            "distortion_coefficients": dist.tolist()
-        }
-        
         if save_to_file:
+            calibration_data = {
+                "camera_matrix": mtx.tolist(),
+                "distortion_coefficients": dist.tolist()
+            }
             with open(configs_path, "w") as f:
                 json.dump(calibration_data, f)
         
             print(f"Calibration data saved to {configs_path}")
         else:
+            calibration_data = {
+                "camera_matrix": np.array(mtx),
+                "distortion_coefficients": np.array(dist)
+            }
             return calibration_data
     else:
         print("Could not find enough chessboard patterns for calibration.")

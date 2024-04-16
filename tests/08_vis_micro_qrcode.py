@@ -67,5 +67,5 @@ def visualize_micro_qr_codes_in_video(video_path, scale_factor=0.5):
     cv2.destroyAllWindows()
 
 # Example usage
-video_path = '/home/object814/Videos/iphone_test_2.MOV'
+video_path = '/home/object814/Videos/0416_exp/iphone_back.MOV'
 visualize_micro_qr_codes_in_video(video_path, scale_factor=0.5)  # Adjust scale_factor as needed

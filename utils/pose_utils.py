@@ -90,13 +90,13 @@ def cal_poses_diff(poses1_dic, poses2_dic):
 
         # Calculate unified difference
         unified_diff = (median_translational_diff + median_rotational_diff) / count_comparisons
-        print(f"Median translational difference: {median_translational_diff:.4f}")
-        print(f"Median rotational difference: {median_rotational_diff:.4f}")
+        # print(f"Median translational difference: {median_translational_diff:.4f}")
+        # print(f"Median rotational difference: {median_rotational_diff:.4f}")
     else:
         unified_diff = 0.0
 
-    print(f"Total number of skipped poses: {count_skip}")
-    print(f"Total comparisons: {count_comparisons}")
+    # print(f"Total number of skipped poses: {count_skip}")
+    # print(f"Total comparisons: {count_comparisons}")
     return unified_diff
 
 def interpolate_transform(start_T, end_T, steps):

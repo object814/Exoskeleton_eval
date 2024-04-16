@@ -4,13 +4,11 @@ import numpy as np
 import time
 
 # Load the transformation matrices
-qr_in_camera1 = np.load('data/0409_test/iphone_qr2_in_qr1.npy')
-qr_in_camera2 = np.load('data/0409_test/samsung_qr2_in_qr1.npy')
-qr2_final = np.load('data/0409_test/qr2_final_poses.npy')
+poses = np.load('data/0416_test/final_poses.npy', allow_pickle='True').item()
 
-list1 = qr_in_camera1
-list2 = qr_in_camera2
-list3 = qr2_final
+list1 = poses['2']
+list2 = poses['3']
+list3 = poses['4']
 
 print(len(list1))
 print(len(list2))
@@ -43,7 +41,7 @@ index = 0
 while index < len(list1):
     update_frame(frame_1, list1[index])
     update_frame(frame_2, list2[index])
-    update_frame(frame_3, list3[index], width=5)
+    update_frame(frame_3, list3[index])
 
     index += 1
     input("Press Enter to proceed to the next transformation...")
