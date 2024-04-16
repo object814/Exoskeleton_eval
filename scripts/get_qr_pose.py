@@ -288,21 +288,16 @@ def main(calibration_video_path = None,
 
     # cut all cameras to frame_num_sync
     for i in range(camera_num):
-        print('camera name: ', camera_names[i])
         if camera_names[i] != basis_camera: # for all cameras except the basis camera
             for label in qr_labels: # for all QR codes
                 starting_frame = max_frame_best - frame_best[camera_names[i]] # starting frame for this camera
-                print('starting frame: ', starting_frame)
                 ending_frame = starting_frame + frame_num_sync # ending frame for this camera
-                print('ending frame: ', ending_frame)
                 camera_dict[camera_names[i]]["QR_pose_info"][label] =\
                     camera_dict[camera_names[i]]["QR_pose_info"][label][starting_frame:ending_frame]
         elif camera_names[i] == basis_camera: # for basis camera
             for label in qr_labels: # for all QR codes
                 starting_frame = max_frame_best
-                print('starting frame best: ', starting_frame)
                 ending_frame = starting_frame + frame_num_sync
-                print('ending frame: ', ending_frame)
                 camera_dict[camera_names[i]]["QR_pose_info"][label] =\
                     camera_dict[camera_names[i]]["QR_pose_info"][label][starting_frame:ending_frame]
 
@@ -316,7 +311,7 @@ def main(calibration_video_path = None,
      should be very close, i being the frame number, 
      except being identity matirx (QR code not detected in some cameras)
     '''
-    
+
     ###### calculate average pose for each timestep ######
     unified_qr_poses = {label: [] for label in qr_labels} # dictionary to store the unified QR code poses
     for label in qr_labels:
