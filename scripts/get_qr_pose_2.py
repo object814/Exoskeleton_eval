@@ -95,7 +95,7 @@ def main(calib_video_path = None,
     # Create folder to store data if not exists
     if not os.path.exists(f"data/{test_name}"):
         os.makedirs(f"data/{test_name}")
-    
+
     ###### Initialization ######
     camera_dict = {}
     for i in range(camera_num):
@@ -193,6 +193,8 @@ def main(calib_video_path = None,
         for camera_name in camera_names:
             for qr_label in qr_labels:
                 np.save(f'data/{test_name}/{qr_label}_in_{camera_name}.npy', camera_dict[camera_name]['QR_pose_info'][qr_label])
+
+    # camera_dict = np.load(f"data/{test_name}/camera_dict.npy", allow_pickle=True).item()
 
     ###### Construct camera positions with respect to the specified QR code with pose calibration video ######
     for i in range(camera_num):
@@ -429,16 +431,16 @@ def main(calib_video_path = None,
 if __name__ == "__main__":
     main(calib_video_path = [None, None, None], 
          calib_data_path = ["configs/camera_calibration_iphone.json", "configs/camera_calibration_samsung.json", "configs/camera_calibration_ashwin_iphone.json"], 
-         final_pose_path="data/0418_test_2/unified_poses.npy",
+         final_pose_path="data/0422_test/unified_poses.npy",
          calib_chessboard_size = (8,6), 
          calib_chessboard_square_size = 0.0245,
-         cam_pose_calib_video_path = ["/home/object814/Videos/0418_exp_2/right_calib_pose.MOV", "/home/object814/Videos/0418_exp_2/left_calib_pose.mp4", "/home/object814/Videos/0418_exp_2/back_calib_pose.MOV"],
-         operational_video_path = ["/home/object814/Videos/0418_exp_2/right.MOV", "/home/object814/Videos/0418_exp_2/left.mp4", "/home/object814/Videos/0418_exp_2/back.MOV"], 
+         cam_pose_calib_video_path = ["/home/object814/Videos/0422_exp/right_calib_pose.MOV", "/home/object814/Videos/0422_exp/left_calib_pose.mp4", "/home/object814/Videos/0422_exp/back_calib_pose.MOV"],
+         operational_video_path = ["/home/object814/Videos/0422_exp/right.MOV", "/home/object814/Videos/0422_exp/left.mp4", "/home/object814/Videos/0422_exp/back.MOV"], 
          camera_num = 3, 
          camera_names = ["right", "left", "back"], 
          qr_labels = ["1", "2", "3", "4"], 
-         qr_sizes = [0.1622, 0.076, 0.076, 0.076], 
+         qr_sizes = [0.163, 0.076, 0.076, 0.076], 
          base_qr_label = "1",
-         test_name="0418_test_2",
+         test_name="0422_test",
          frame_rate = 20,
          debug=True)

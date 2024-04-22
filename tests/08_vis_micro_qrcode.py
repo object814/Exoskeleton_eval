@@ -5,6 +5,10 @@ import pyboof as pb
 def visualize_micro_qr_codes_in_video(video_path, scale_factor=0.5):
     # Open the video file
     cap = cv2.VideoCapture(video_path)
+    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    FPS = cap.get(cv2.CAP_PROP_FPS)
+    print("Total number of frames:", total_frames)
+    print("FPS:", FPS)
     if not cap.isOpened():
         print("Error: Could not open video.")
         return
@@ -67,5 +71,5 @@ def visualize_micro_qr_codes_in_video(video_path, scale_factor=0.5):
     cv2.destroyAllWindows()
 
 # Example usage
-video_path = '/home/object814/Videos/0418_exp_2/back_calib_pose.MOV'
+video_path = '/home/object814/Videos/0422_exp/left.mp4'
 visualize_micro_qr_codes_in_video(video_path, scale_factor=0.5)  # Adjust scale_factor as needed

@@ -135,7 +135,7 @@ def get_qr_poses_from_video(video_path, qr_code_sizes, qr_labels, camera_matrix,
     if not cap.isOpened():
         raise IOError(f"Error: Could not open video at path {video_path}.")
     
-    video_fps = cap.get(cv2.CAP_PROP_FPS)
+    video_fps = round(cap.get(cv2.CAP_PROP_FPS))
     skip_frames = max(int(video_fps / process_freq), 1)
 
     qr_pose_info = {label: [] for label in qr_labels} # qr_pose_info for current camera: qr_pose_info = {"1": [], "2": [], "3": [], "frame_number": 0, "occlusion_frame_number": {"1": 0, "2": 0, "3": 0}}

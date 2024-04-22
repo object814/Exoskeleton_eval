@@ -53,5 +53,5 @@ def visualize_qr_codes_in_video(video_path, scale_factor=0.5):
     cv2.destroyAllWindows()
 
 # Example usage
-video_path = 'data/execute_samsung.mp4'
-visualize_qr_codes_in_video(video_path, scale_factor=0.6)  # Adjust scale_factor as needed
+video_path = '/home/object814/Videos/0422_exp/left.mp4'
+visualize_qr_codes_in_video(video_path, scale_factor=0.5)  # Adjust scale_factor as needed

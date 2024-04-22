@@ -115,7 +115,7 @@ def get_joint_angles_and_set(link_pose, exo_id, link_id, client_id):
     quaternion = r.as_quat()  # Returns [x, y, z, w]
 
     # Calculate the inverse kinematics
-    joint_angles = p.calculateInverseKinematics(exo_id, link_id, targetPosition=position, targetOrientation=quaternion)
+    joint_angles = p.calculateInverseKinematics(exo_id, link_id, targetPosition=position, targetOrientation=quaternion, physicsClientId=client_id)
     
     # Apply the joint angles to the robot
     for i, angle in enumerate(joint_angles):
@@ -208,7 +208,7 @@ def main(qr_pose_path,
             axis_names[exo_frame_name] = target_axis
 
     # list to store joint angles at each step
-    joint_angles_data = []
+    joint_angles_data = [read_joint_angles(exo_id, p_client)]
 
     ###### Declare the relationship between exoskeleton frame name and QR code label ######
     exo_frame_pose = {}
@@ -219,51 +219,34 @@ def main(qr_pose_path,
         qr_pose_data[exo_frame_name] = qr_pose_data.pop(qr_label) # rename the key of QR code pose data
         exo_frame_pose[exo_frame_name] = [] # initialize exoskeleton frame pose
 
-    ###### Initialize exoskeleton pose with QR poses in the first frame ######
-    # for trunk (base) frame
-    set_trunk_frame_pose(qr_pose_data["trunk"][0], exo_id, p_client)
-    exo_frame_pose["trunk"].append(read_frame_pose(exo_id, link_ids["trunk"], p_client)) # save the initial trunk frame pose
+    ###### Change the QR code frame into URDF virtual frame
+    leftThigh_QR2Virtual = np.array([
+        [ 1, 0, 0, 0],
+        [ 0, 0, 1, 0],
+        [ 0, 1, 0, 0],
+        [ 0, 0, 0, 1]
+    ])
+    rightThigh_QR2Virtual = np.array([
+        [ 1, 0, 0, 0],
+        [ 0, 0, 1, 0],
+        [ 0, -1, 0, 0],
+        [ 0, 0, 0, 1]
+    ])
 
-    # for other frames
-    for exo_frame_name in exo_frame_names:
-        if exo_frame_name == "trunk":
-            continue
-        else:
-            set_frame_pose_with_qr_code_pose(
-                    qr_pose_data[exo_frame_name][0],
-                    exo_id,
-                    link_ids[exo_frame_name],
-                    axis_names[exo_frame_name],
-                    p_client)
-            exo_frame_pose[exo_frame_name].append(read_frame_pose(exo_id, link_ids[exo_frame_name], p_client))
-    
-    # save the initial joint angles
-    joint_angles_data.append(read_joint_angles(exo_id, p_client))
-    
-    ###### Turn QR code pose data into relative transformation matrices ######
-    # do the base frame first
-    for i in range(1, total_step):
-        previous2current_qr = transform_A2B(qr_pose_data["trunk"][i-1], qr_pose_data["trunk"][i])
-        exo_frame_pose["trunk"].append(exo_frame_pose["trunk"][-1] @ previous2current_qr)
-    # do the other frames
-    for i in range(1, total_step):
+    for i in range(total_step):
         for exo_frame_name in exo_frame_names:
             if exo_frame_name == "trunk":
                 continue
             else:
-                if np.array_equal(qr_pose_data[exo_frame_name], np.identity(4)): # undetected QR code frame
-                    base2frame = transform_A2B(exo_frame_pose["trunk"][i-1], exo_frame_pose[exo_frame_name][i-1])
-                    current_frame_pose = exo_frame_pose["trunk"][i] @ base2frame # same pose as previous step with respect to base frame
-                    previous2current_frame = transform_A2B(exo_frame_pose[exo_frame_name][i-1], current_frame_pose)
-                    current_qr_pose = qr_pose_data[exo_frame_name][i-1] @ previous2current_frame # update the qr pose for upcoming calculation
-                    qr_pose_data[exo_frame_name][i] = current_qr_pose
-                    exo_frame_pose[exo_frame_name].append(current_frame_pose)
+                if exo_frame_name == "leftThigh":
+                    exo_frame_pose[exo_frame_name].append(qr_pose_data[exo_frame_name][i] @ leftThigh_QR2Virtual)
+                elif exo_frame_name == "rightThigh":
+                    exo_frame_pose[exo_frame_name].append(qr_pose_data[exo_frame_name][i] @ rightThigh_QR2Virtual)
                 else:
-                    previous2current_qr = transform_A2B(qr_pose_data[exo_frame_name][i-1], qr_pose_data[exo_frame_name][i])
-                    exo_frame_pose[exo_frame_name].append(exo_frame_pose[exo_frame_name][-1] @ previous2current_qr)
+                    exo_frame_pose[exo_frame_name].append(qr_pose_data[exo_frame_name][i])
 
     ###### Do inverse kinematics to find joint angles at every step ######
-    for i in range(1, total_step):
+    for i in range(total_step):
         set_trunk_frame_pose(qr_pose_data["trunk"][i], exo_id, p_client)
         set_exo_pose(joint_angles_data[-1], exo_id, p_client)
         for exo_frame_name in exo_frame_names:
