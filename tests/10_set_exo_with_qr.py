@@ -143,17 +143,18 @@ def set_trunk_frame_pose(transformation_matrix, object_id, pb_client):
 
 def main(urdf_path, poses_path):
     # Read poses from file
-    poses_vision = np.load(poses_path, allow_pickle=True).item()
+    qr_poses = np.load(poses_path, allow_pickle=True).item()
 
     # Change the keys in poses_vision to match the link names in the URDF
     '''
     2: trunk
-    3: rightThigh
-    4: leftThigh
+    3: leftThigh
+    4: rightThigh
     '''
-    poses_vision["trunk"] = poses_vision.pop("2")
-    # poses_vision["rightThigh"] = poses_vision.pop("3")
-    # poses_vision["leftThigh"] = poses_vision.pop("4")
+    poses_vision = {}
+    poses_vision["trunk"] = qr_poses.pop("2")
+    poses_vision["rightThigh"] = poses_vision.pop("3")
+    poses_vision["leftThigh"] = poses_vision.pop("4")
 
 
     # Connect to PyBullet
@@ -166,7 +167,7 @@ def main(urdf_path, poses_path):
     exo_id = p.loadURDF(urdf_path, basePosition=initialBasePosition, baseOrientation=initialBaseOrientation, useFixedBase=True)
 
     # Find the link IDs by names
-    links_to_visualize = ['trunk', 'rightThigh', 'leftThigh']
+    links_to_visualize = ['trunk', 'leftThigh', 'rightThigh']
     num_joints = p.getNumJoints(exo_id)
     link_ids = {}
 
@@ -243,4 +244,4 @@ def main(urdf_path, poses_path):
     p.disconnect()
 
 if __name__ == '__main__':
-    main('data/exo_model/urdf/exo_w_virtual_frame.urdf', 'data/0409_test/qr2_final_poses.npy')
+    main('data/exo_model/urdf/exo_w_virtual_frame.urdf', 'data/0418_test_2/unified_poses.npy')

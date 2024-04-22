@@ -4,7 +4,7 @@ import numpy as np
 import time
 
 # Load the transformation matrices
-poses = np.load('data/0416_test/final_poses.npy', allow_pickle='True').item()
+poses = np.load('data/0418_test/unified_poses.npy', allow_pickle='True').item()
 
 list1 = poses['2']
 list2 = poses['3']
@@ -25,10 +25,12 @@ def create_frame():
         axis_ids.append(id)
     return axis_ids
 
-def update_frame(axis_ids, transformation_matrix, width=1):
+def update_frame(axis_ids, transformation_matrix, width=1, length=0.1):
     origin = transformation_matrix[:3, 3]
     for i, axis_id in enumerate(axis_ids):
         direction = transformation_matrix[:3, i]
+        # change the length of the direction to length
+        direction = direction / np.linalg.norm(direction) * length
         p.addUserDebugLine(origin, origin + direction, lineColorRGB=[i == j for j in range(3)], replaceItemUniqueId=axis_id, lineWidth=width)
 
 # Create frames for all lists
