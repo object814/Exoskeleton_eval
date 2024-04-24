@@ -31,12 +31,12 @@ def consecutive_idx(index_list):
     grouped_indexes.append(temp_list)
     return grouped_indexes
 
-def main(calibration_video_path = None,
-         calibration_data_path = None,
-         final_pose_path = None,
+def main(calib_video_path = None,
+         calib_data_path = None,
          calib_chessboard_size = None,
          calib_chessboard_square_size = None,
-         calculation_video_path = None,
+         cam_pose_calib_video_path = None,
+         operational_video_path = None,
          camera_num = 2,
          frame_rate = 10,
          camera_names = ["camera1", "camera2"], 
@@ -44,6 +44,7 @@ def main(calibration_video_path = None,
          qr_sizes = [0.1, 0.1], 
          base_qr_label = "QR1",
          test_name = "test",
+         final_pose_path = None,
          debug = False):
     """
     Main function for camera calibration and QR code pose calculation
@@ -69,11 +70,11 @@ def main(calibration_video_path = None,
         Before calculating the average pose, unstable QR code poses are detected and replaced with identity matrices
 
     Args:
-        calibration_video_path (str, optional): Path to the calibration video for each camera. Defaults to None.
-        calibration_data_path (str, optional): Path to the calibrated data for each camera. Defaults to None.
+        calib_video_path (str, optional): Path to the calibration video for each camera. Defaults to None.
+        calib_data_path (str, optional): Path to the calibrated data for each camera. Defaults to None.
         calib_chessboard_size (tuple, optional): Size of the chessboard pattern used for calibration. Defaults to None.
         calib_chessboard_square_size (float, optional): Size of each square in the chessboard pattern in meters. Defaults to None.
-        calculation_video_path (str, optional): Path to the calculation video for each camera. Defaults to None.
+        operational_video_path (str, optional): Path to the calculation video for each camera. Defaults to None.
         camera_num (int, optional): Number of cameras. Defaults to 2.
         frame_rate (int, optional): Frame rate of the calculation video. Defaults to 10.
         camera_names (list, optional): List of camera names. Defaults to ["camera1", "camera2"].
@@ -90,18 +91,23 @@ def main(calibration_video_path = None,
     except ValueError as e:
         print(e)
         camera_names = [f"camera{i+1}" for i in range(camera_num)]
-    
+
+    # Create folder to store data if not exists
+    if not os.path.exists(f"data/{test_name}"):
+        os.makedirs(f"data/{test_name}")
+
     ###### Initialization ######
     camera_dict = {}
     for i in range(camera_num):
         camera_dict[camera_names[i]] = {
-            "Calibration_video_path": "",
-            "Calibration_data_path": "",
+            "calib_video_path": "",
+            "calib_data_path": "",
             "Calibration_data": {
                 "camera_matrix": [],
                 "distortion_coefficients": []
             },
-            "Calculation_video_path": "",
+            "operational_video_path": "",
+            "cam_pose_calib_video_path": "",
             "QR_pose_info": {},
             "Camera_pose": [],
         }
@@ -111,7 +117,7 @@ def main(calibration_video_path = None,
         print("----------------------------------------------")
         flag = input(f"Calibrate {camera_names[i]} with video? (y/n): ")
         if flag.lower() == 'y':
-            if calibration_video_path[i] is None:
+            if calib_video_path[i] is None:
                 while True:
                     try:
                         path_to_video = input(f"Enter the path to the calibration video for \033[92m{camera_names[i]}\033[0m: ")
@@ -120,14 +126,14 @@ def main(calibration_video_path = None,
                     except FileNotFoundError:
                         print(f"File path \033[92m{path_to_video}\033[0m not found. Please enter a valid path.")
             else:
-                path_to_video = calibration_video_path[i]
+                path_to_video = calib_video_path[i]
             
             print(path_to_video)
-            camera_dict[camera_names[i]]["Calibration_video_path"] = path_to_video # record the path to the calibration video
+            camera_dict[camera_names[i]]["calib_video_path"] = path_to_video # record the path to the calibration video
             calibration_data = calibrate_camera_from_video(path_to_video, None, calib_chessboard_size, calib_chessboard_square_size, 30, False)
             camera_dict[camera_names[i]]["Calibration_data"] = calibration_data # record the calibration data
         else:
-            if calibration_data_path[i] is None:
+            if calib_data_path[i] is None:
                 while True:
                     try:
                         path_to_calib_data = input(f"Enter the path to the calibration JSON data for \033[92m{camera_names[i]}\033[0m: ")
@@ -136,18 +142,18 @@ def main(calibration_video_path = None,
                     except FileNotFoundError:
                         print(f"File path \033[92m{path_to_calib_data}\033[0m not found. Please enter a valid path.")
             else:
-                path_to_calib_data = calibration_data_path[i]
+                path_to_calib_data = calib_data_path[i]
 
-            camera_dict[camera_names[i]]["Calibration_data_path"] = path_to_calib_data # record the path to the calibration data
+            camera_dict[camera_names[i]]["calib_data_path"] = path_to_calib_data # record the path to the calibration data
             print(f"Calibration data for \033[92m{camera_names[i]}\033[0m loaded successfully: {path_to_calib_data}")
             with open(path_to_calib_data, "r") as f:
                 data = json.load(f)
                 camera_dict[camera_names[i]]["Calibration_data"]["camera_matrix"] = np.array(data["camera_matrix"]) # record the calibration data
                 camera_dict[camera_names[i]]["Calibration_data"]["distortion_coefficients"] = np.array(data["distortion_coefficients"]) # record the calibration data
 
-    ###### Calculate QR code pose for each camera ######
+    ###### Calculate QR code pose in operational video for each camera ######
     for i in range(camera_num):
-        if calculation_video_path[i] is None:
+        if operational_video_path[i] is None:
             while True:
                 try:
                     path_to_video = input(f"Enter the path to the calculation video for \033[92m{camera_names[i]}\033[0m: ")
@@ -156,9 +162,9 @@ def main(calibration_video_path = None,
                 except FileNotFoundError:
                     print(f"File path \033[92m{path_to_video}\033[0m not found. Please enter a valid path.")
         else:
-            path_to_video = calculation_video_path[i]
+            path_to_video = operational_video_path[i]
         
-        camera_dict[camera_names[i]]["Calculation_video_path"] = path_to_video # record the path to the video
+        camera_dict[camera_names[i]]["operational_video_path"] = path_to_video # record the path to the video
         print("----------------------------------------------")
         print(f"Calculating QR code poses for \033[92m{camera_names[i]}\033[0m, video: {path_to_video}")
         print("Starting calculation...")
@@ -169,7 +175,7 @@ def main(calibration_video_path = None,
             qr_labels, # labels of QR code in sequence
             camera_dict[camera_names[i]]["Calibration_data"]["camera_matrix"], 
             camera_dict[camera_names[i]]["Calibration_data"]["distortion_coefficients"], 
-            process_freq=20, 
+            process_freq=frame_rate, 
             output_json_filename=None,
             save_to_file=False)
         camera_dict[camera_names[i]]["QR_pose_info"] = qr_pose_info
@@ -188,11 +194,45 @@ def main(calibration_video_path = None,
             for qr_label in qr_labels:
                 np.save(f'data/{test_name}/{qr_label}_in_{camera_name}.npy', camera_dict[camera_name]['QR_pose_info'][qr_label])
 
-    ###### Construct camera positions with respect to the specified QR code ######
+    # camera_dict = np.load(f"data/{test_name}/camera_dict.npy", allow_pickle=True).item()
+
+    ###### Construct camera positions with respect to the specified QR code with pose calibration video ######
     for i in range(camera_num):
-        if base_qr_label not in camera_dict[camera_names[i]]["QR_pose_info"]:
+        if cam_pose_calib_video_path[i] is None:
+            while True:
+                try:
+                    path_to_video = input(f"Enter the path to the camera pose calibration video for \033[92m{camera_names[i]}\033[0m: ")
+                    with open(path_to_video):
+                        break
+                except FileNotFoundError:
+                    print(f"File path \033[92m{path_to_video}\033[0m not found. Please enter a valid path.")
+        else:
+            path_to_video = cam_pose_calib_video_path[i]
+        
+        camera_dict[camera_names[i]]["cam_pose_calib_video_path"] = path_to_video # record the path to the video
+        print("----------------------------------------------")
+        print(f"Calculating cam_pose calib QR code poses for \033[92m{camera_names[i]}\033[0m, video: {path_to_video}")
+        print("Starting calculation...")
+        # calculate the QR code poses for each frame
+        cam_pose_calib_info = get_qr_poses_from_video(
+            path_to_video,
+            qr_sizes, # in meters
+            qr_labels, # labels of QR code in sequence
+            camera_dict[camera_names[i]]["Calibration_data"]["camera_matrix"], 
+            camera_dict[camera_names[i]]["Calibration_data"]["distortion_coefficients"], 
+            process_freq=frame_rate, 
+            output_json_filename=None,
+            save_to_file=False)
+        camera_dict[camera_names[i]]["cam_calib_QR_pose_info"] = cam_pose_calib_info
+        print("----------------------------------------------")
+        print(f"QR pose information for \033[92m{camera_names[i]}\033[0m obtained successfully: {cam_pose_calib_info['frame_number']} frames.")
+        for key, value in cam_pose_calib_info["occlusion_frame_number"].items():
+            print(f"QR label: {key}, occlusion frame number: \033[91m{value}\033[0m")
+        print("----------------------------------------------")
+    for i in range(camera_num):
+        if base_qr_label not in camera_dict[camera_names[i]]["cam_calib_QR_pose_info"]:
             raise ValueError(f"Wrong base_qr_label. Please provide a valid label.")
-        qr_poses = camera_dict[camera_names[i]]["QR_pose_info"][base_qr_label] # transformation matrices for base QR code
+        qr_poses = camera_dict[camera_names[i]]["cam_calib_QR_pose_info"][base_qr_label] # transformation matrices for base QR code
         camera_pose = get_camera_pose_in_qr_frame(qr_poses) # camera pose with respect to base QR code
         camera_dict[camera_names[i]]["Camera_pose"] = camera_pose # record the camera pose
         print(f"Camera pose for \033[92m{camera_names[i]}\033[0m: \n{camera_pose}")
@@ -365,10 +405,12 @@ def main(calibration_video_path = None,
                 elif end_idx == frame_num_sync-1: # if the last frame is identity matrix
                     for idx in range(start_idx, frame_num_sync):
                         unified_qr_poses[label][idx] = unified_qr_poses[label][start_idx-1]
-                else:
+                elif (len(idx_group) < 40 and label != '2') or label == '2':
                     interpolated_transforms = interpolate_transform(unified_qr_poses[label][start_idx-1], unified_qr_poses[label][end_idx+1], len(idx_group))
                     for idx in range(len(idx_group)):
                         unified_qr_poses[label][idx_group[idx]] = interpolated_transforms[idx]
+                elif len(idx_group) >= 40 and label != '2': # if the gap is too large, do not interpolate
+                    pass
             elif len(idx_group) == 1: # just one identity matrix
                 if idx_group[0] == 0: # if the first frame is identity matrix
                     unified_qr_poses[label][0] = unified_qr_poses[label][1]
@@ -387,16 +429,18 @@ def main(calibration_video_path = None,
     # print(unified_qr_poses['2'][0:10]) # 10 transformation matrices for QR code 2
 
 if __name__ == "__main__":
-    main(calibration_video_path = [None, None, None], 
-         calibration_data_path = ["configs/camera_calibration_iphone.json", "configs/camera_calibration_samsung.json", "configs/camera_calibration_ashwin_iphone.json"], 
-         final_pose_path="data/0416_test/unified_poses.npy",
+    main(calib_video_path = [None, None, None], 
+         calib_data_path = ["configs/camera_calibration_iphone.json", "configs/camera_calibration_samsung.json", "configs/camera_calibration_ashwin_iphone.json"], 
+         final_pose_path="data/0422_test/unified_poses.npy",
          calib_chessboard_size = (8,6), 
-         calib_chessboard_square_size = 0.0245, 
-         calculation_video_path = ["/home/object814/Videos/0416_exp/iphone_right.MOV", "/home/object814/Videos/0416_exp/samsung.mp4", "/home/object814/Videos/0416_exp/iphone_back.MOV"], 
+         calib_chessboard_square_size = 0.0245,
+         cam_pose_calib_video_path = ["/home/object814/Videos/0422_exp/right_calib_pose.MOV", "/home/object814/Videos/0422_exp/left_calib_pose.mp4", "/home/object814/Videos/0422_exp/back_calib_pose.MOV"],
+         operational_video_path = ["/home/object814/Videos/0422_exp/right.MOV", "/home/object814/Videos/0422_exp/left.mp4", "/home/object814/Videos/0422_exp/back.MOV"], 
          camera_num = 3, 
-         camera_names = ["iphone_right", "samsung", "iphone_back"], 
+         camera_names = ["right", "left", "back"], 
          qr_labels = ["1", "2", "3", "4"], 
-         qr_sizes = [0.1622, 0.076, 0.038, 0.038], 
+         qr_sizes = [0.163, 0.076, 0.076, 0.076], 
          base_qr_label = "1",
-         test_name="0416_test",
+         test_name="0422_test",
+         frame_rate = 20,
          debug=True)

@@ -4,7 +4,7 @@ import numpy as np
 import time
 
 # Load the transformation matrices
-poses = np.load('data/0418_test/unified_poses.npy', allow_pickle='True').item()
+poses = np.load('data/0422_test/unified_poses.npy', allow_pickle='True').item()
 
 list1 = poses['2']
 list2 = poses['3']
@@ -46,6 +46,7 @@ while index < len(list1):
     update_frame(frame_3, list3[index])
 
     index += 1
+    print("current index: ", index)
     input("Press Enter to proceed to the next transformation...")
     time.sleep(0.01)
 
