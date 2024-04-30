@@ -3,7 +3,9 @@ import pybullet as p
 import json
 import time
 import os
+from matplotlib.animation import FuncAnimation
 import matplotlib.pyplot as plt
+import threading
 from scipy.spatial.transform import Rotation as R
 import sys
 sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
@@ -358,69 +360,73 @@ def main(qr_pose_path,
                 joint_angles = get_joint_angles_and_set(exo_frame_pose[exo_frame_name][i], exo_id, link_ids[exo_frame_name], p_client)
         trunk_inclination_data.append(trunk_inclination)
         joint_angles_data.append(joint_angles)
-    
-    ###### Set the pose of exoskeleton in Pybullet simulation ######
+
+    joint_angles_data = np.array(joint_angles_data)
+    trunk_inclination_data = np.array(trunk_inclination_data)
+
+    total_step = len(joint_angles_data)
+    num_joints = joint_angles_data.shape[1]
+
+    # Setup Matplotlib figures for real-time updating
+    fig, axs = plt.subplots(2, 2)
+    lines = []
+    for i in range(2):
+        for j in range(2):
+            line, = axs[i, j].plot([], [])
+            axs[i, j].set_xlim(0, total_step)
+            axs[i, j].set_ylim(np.min(joint_angles_data[:, i*2+j]), np.max(joint_angles_data[:, i*2+j]))
+            lines.append(line)
+
+    # Set titles and labels
+    axs[0, 0].set_title("Left Thigh Joint 1 Angle")
+    axs[0, 1].set_title("Left Thigh Joint 2 Angle")
+    axs[1, 0].set_title("Right Thigh Joint 1 Angle")
+    axs[1, 1].set_title("Right Thigh Joint 2 Angle")
+    for ax in axs.flat:
+        ax.set(xlabel='TimeStep', ylabel='Angle (rad)')
+
+    # Prepare the trunk inclination plot
+    fig_trunk, ax_trunk = plt.subplots()
+    line_trunk, = ax_trunk.plot([], [])
+    ax_trunk.set_xlim(0, total_step)
+    ax_trunk.set_ylim(np.min(trunk_inclination_data), np.max(trunk_inclination_data))
+    ax_trunk.set_title("Trunk Inclination")
+    ax_trunk.set_xlabel("Time")
+    ax_trunk.set_ylabel("Inclination (rad)")
+
+    plt.show(block=False)
+
+    # Pybullet visualization loop with Matplotlib updates
     input("start visualizing")
     for i in range(total_step):
         set_trunk_frame_pose(exo_frame_pose["trunk"][i], exo_id, link_ids["trunk"], p_client)
         set_exo_pose(joint_angles_data[i], exo_id, p_client)
-        # visualize frames
+
+        # Update frames in Pybullet
         update_frame(qr_trunk, exo_frame_pose["trunk"][i])
         update_frame(qr_leftThigh, exo_frame_pose["leftThigh"][i])
         update_frame(qr_rightThigh, exo_frame_pose["rightThigh"][i])
         update_frame(frame_trunk, read_frame_pose(exo_id, link_ids["trunk"], p_client), width=1.5)
         update_frame(frame_leftThigh, read_frame_pose(exo_id, link_ids["leftThigh"], p_client), width=1.5)
         update_frame(frame_rightThigh, read_frame_pose(exo_id, link_ids["rightThigh"], p_client), width=1.5)
-        time.sleep(1/20)
+        
+        # Update Matplotlib plots
+        for j, line in enumerate(lines):
+            if j == 2 or j == 3:
+                line.set_data(range(i+1), joint_angles_data[:i+1, j+1])
+            else:
+                line.set_data(range(i+1), joint_angles_data[:i+1, j])
+            axs[j//2, j%2].draw_artist(axs[j//2, j%2].patch)
+            axs[j//2, j%2].draw_artist(line)
+        
+        line_trunk.set_data(range(i+1), trunk_inclination_data[:i+1])
+        ax_trunk.draw_artist(ax_trunk.patch)
+        ax_trunk.draw_artist(line_trunk)
+
+        plt.pause(0.05)  # Short pause to update plots
         print(f"trunk inclination: {trunk_inclination_data[i]}")
-        # input("Enter to proceed to the next step...")
-    
+
     p.disconnect(p_client)
-    
-    ###### Save the data to npy file ######
-    joint_angles_data = np.array(joint_angles_data)
-    trunk_inclination_data = np.array(trunk_inclination_data)
-    np.save("data/exo_pose.npy", joint_angles_data)
-    np.save("data/trunk_inclination.npy", trunk_inclination_data)
-    print("Joint angles data saved successfully.")
-    print("Trunk inclination data saved successfully.")
-
-    ###### Draw the graph for joint angles and trunk inclination ######
-    # draw joint angles
-    fig, ax = plt.subplots(2, 2)
-    print(joint_angles_data.shape) # (total_step, num_joints)
-    # joint angle 1
-    ax[0, 0].plot(joint_angles_data[:, 0])
-    ax[0, 0].set_title("Left Thigh Joint 1 Angle")
-    ax[0, 0].set_xlabel("Time")
-    ax[0, 0].set_ylabel("Angle (rad)")
-    # joint angle 2
-    ax[0, 1].plot(joint_angles_data[:, 1])
-    ax[0, 1].set_title("Left Thigh Joint 2 Angle")
-    ax[0, 1].set_xlabel("Time")
-    ax[0, 1].set_ylabel("Angle (rad)")
-    # joint angle 3
-    ax[1, 0].plot(joint_angles_data[:, 3])
-    ax[1, 0].set_title("Right Thigh Joint 1 Angle")
-    ax[1, 0].set_xlabel("Time")
-    ax[1, 0].set_ylabel("Angle (rad)")
-    # joint angle 4
-    ax[1, 1].plot(joint_angles_data[:, 4])
-    ax[1, 1].set_title("Right Thigh Joint 2 Angle")
-    ax[1, 1].set_xlabel("Time")
-    ax[1, 1].set_ylabel("Angle (rad)")
-    plt.show()
-
-    # draw trunk inclination
-    fig, ax = plt.subplots()
-    ax.plot(trunk_inclination_data)
-    ax.set_title("Trunk Inclination")
-    ax.set_xlabel("Time")
-    ax.set_ylabel("Inclination (rad)")
-    plt.show()
-
-
-    return 0
 
 if __name__ == "__main__":
     main(qr_pose_path="data/0422_test/unified_poses.npy",

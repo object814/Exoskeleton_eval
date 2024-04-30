@@ -4,15 +4,14 @@ import numpy as np
 import time
 
 # Load the transformation matrices
-poses = np.load('data/0422_test/unified_poses.npy', allow_pickle='True').item()
+list1 = np.load('data/0409_test/qr2_final_poses.npy', allow_pickle=True).item()
+list1 = list1['2']
+# list2 = np.load('data/0409_test/samsung_qr2_in_qr1.npy')
 
-list1 = poses['2']
-list2 = poses['3']
-list3 = poses['4']
-
-print(len(list1))
-print(len(list2))
-print(len(list3))
+# Cut the lists to the same length
+# min_length = min(len(list1), len(list2))
+list1 = list1[200:330]
+# list2 = list2[200:330]
 
 # Initialize PyBullet
 p.connect(p.GUI)
@@ -40,15 +39,15 @@ frame_3 = create_frame()
 
 # Visualization loop
 index = 0
+input("wait")
 while index < len(list1):
     update_frame(frame_1, list1[index])
-    update_frame(frame_2, list2[index])
-    update_frame(frame_3, list3[index])
+    # update_frame(frame_2, list2[index])
 
     index += 1
     print("current index: ", index)
-    input("Press Enter to proceed to the next transformation...")
-    time.sleep(0.01)
+    # input("Press Enter to proceed to the next transformation...")
+    time.sleep(0.05)
 
 # Disconnect PyBullet
 p.disconnect()

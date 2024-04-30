@@ -355,10 +355,6 @@ def main(calib_video_path = None,
     ###### calculate average pose for each timestep ######
     unified_qr_poses = {label: [] for label in qr_labels} # dictionary to store the unified QR code poses
     for label in qr_labels:
-        print(label)
-        print(len(camera_dict[camera_names[0]]["QR_pose_info"][label]))
-        print(len(camera_dict[camera_names[1]]["QR_pose_info"][label]))
-        print(len(camera_dict[camera_names[2]]["QR_pose_info"][label]))
         for timestep in range(frame_num_sync):
             qr_poses = [] # list of poses for qr code with 'label' at 'timestep'
             for i in range(camera_num):
