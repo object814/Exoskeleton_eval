@@ -1,3 +1,0 @@
-[submodule "3rdparty/DeepLabCut"]
-	path = 3rdparty/DeepLabCut
-	url = https://github.com/DeepLabCut/DeepLabCut.git
