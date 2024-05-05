@@ -238,7 +238,7 @@ def main(qr_pose_path,
     p_client = p.connect(p.GUI) # visualization client
     p.setGravity(0, 0, -9.81, physicsClientId=p_client)
     p.setTimeStep(1/240, physicsClientId=p_client)
-
+    
     # load URDF
     initialBasePosition = [0, 0, 0]
     initialBaseOrientation = p.getQuaternionFromEuler([0, 0, 0])
@@ -384,41 +384,6 @@ def main(qr_pose_path,
     np.save("data/trunk_inclination.npy", trunk_inclination_data)
     print("Joint angles data saved successfully.")
     print("Trunk inclination data saved successfully.")
-
-    ###### Draw the graph for joint angles and trunk inclination ######
-    # draw joint angles
-    fig, ax = plt.subplots(2, 2)
-    print(joint_angles_data.shape) # (total_step, num_joints)
-    # joint angle 1
-    ax[0, 0].plot(joint_angles_data[:, 0])
-    ax[0, 0].set_title("Left Thigh Joint 1 Angle")
-    ax[0, 0].set_xlabel("Time")
-    ax[0, 0].set_ylabel("Angle (rad)")
-    # joint angle 2
-    ax[0, 1].plot(joint_angles_data[:, 1])
-    ax[0, 1].set_title("Left Thigh Joint 2 Angle")
-    ax[0, 1].set_xlabel("Time")
-    ax[0, 1].set_ylabel("Angle (rad)")
-    # joint angle 3
-    ax[1, 0].plot(joint_angles_data[:, 3])
-    ax[1, 0].set_title("Right Thigh Joint 1 Angle")
-    ax[1, 0].set_xlabel("Time")
-    ax[1, 0].set_ylabel("Angle (rad)")
-    # joint angle 4
-    ax[1, 1].plot(joint_angles_data[:, 4])
-    ax[1, 1].set_title("Right Thigh Joint 2 Angle")
-    ax[1, 1].set_xlabel("Time")
-    ax[1, 1].set_ylabel("Angle (rad)")
-    plt.show()
-
-    # draw trunk inclination
-    fig, ax = plt.subplots()
-    ax.plot(trunk_inclination_data)
-    ax.set_title("Trunk Inclination")
-    ax.set_xlabel("Time")
-    ax.set_ylabel("Inclination (rad)")
-    plt.show()
-
 
     return 0
 
