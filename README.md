@@ -18,37 +18,31 @@ We use conda to manage the Python(3.8) environment.
 
 Please run the scripts with the terminal under the root directory (e.g., `python scripts/your_code.py`).
 
-## Camera Calibration
+## Overall Pipeline
 
-Before you perform QR code tracking, you need to calibrate your device.
+1. Customize preparation for your exoskeleton:
+    - for every rigid body of the exoskeleton, at least one QR code shoud be used to represent its pose
+    - generate micro QR codes with utils/micro_qrcode_generation.py, modify the parameters in the script directly according to your need
+    - print out the QR codes in a size suitable for you, measure the size of the QR codes and attach to the exoskeleton
 
-**If you are using a device (e.g., your smartphone) that can change intrinsic parameters (e.g., focus length, image size, etc.), please ensure that the calibration and camera configuration process are consistent.**
+2. URDF augmentation:
+    - add virtual links to the exoskeleton URDF, according to where QR codes are attached to the exoskeleton in real world
 
-1. Print out a chessboard pattern for calibration.
-2. Measure the size of the square and your pattern size.
-3. Record a video using your device, ensuring that the chessboard is visible at all times and from various angles.
-4. Run the following command in your terminal:
-    ```console
-    python scripts/camera_calibration.py your_video_file.mp4 9 6 25
-    # chessboard with 9*6 grid size and 25 mm
-    ```
+3. Before running the main calculation code, do the video recording first, including:
+    - camera pose calibration video for each camera
+    - operation video for each camera
 
-## Environment setup for keypoint detection
+4. Run main calculation code:
+    python scripts/get_qr_pose.py
 
-We use DeepLabCut for 2D keypoint detection on both exoskeleton and *human body (TODO)
+    change the parameters of the main function input directly in the script
 
-run `git submodule update --init --recursive` in the repo to clone the DeepLabCut into 3rdparty
+5. Run pose estimation code:
+    python scripts/get_exo_pose.py
 
-Then run: `conda env update -f 3rdparty/DEEPLABCUT.yaml` to merge the environment into your current conda environment
+    change the parameters of the main function input directly in the script
 
-For full experience of DeelLabCut, run: `pip install 'deeplabcut[gui,tf]'` 
-
-run `conda activate DEEPLABCUT` and you are free to use the deeplabcut for keypoints tracktion
-
-run `python -m deeplabcut` in DEEPLABCUT env to use the GUI
-
-### Trouble shooting
-In our case (Ubuntu20.04) we encpuntered:
+## Problem Solving
 
 `ImportError: /lib/x86_64-linux-gnu/libstdc++.so.6: version 'GLIBCXX_3.4.29' not found (required by /home/YOUR_USER_NAME/anaconda3/envs/DEEPLABCUT/lib/python3.9/site-packages/zmq/backend/cython/../../../../../libzmq.so.5)`
 

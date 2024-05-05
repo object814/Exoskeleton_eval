@@ -93,10 +93,7 @@ def set_trunk_frame_pose(direction, position, body_id, p_id):
     # Update the base link pose in PyBullet
     p_id.resetBasePositionAndOrientation(body_id, position_adjusted, quaternion)
 
-def main(urdf_path, poses_path):
-    # Read poses from file
-    poses_vision = np.load(poses_path, allow_pickle=True).item()
-
+def main(urdf_path):
     # Connect to PyBullet
     p.connect(p.GUI)
     p.setGravity(0, 0, -9.81)
@@ -117,59 +114,6 @@ def main(urdf_path, poses_path):
         if link_name in links_to_visualize:
             link_ids[link_name] = i
 
-    # Set initial pose for pybullet links
-    # Trunk link
-    set_trunk_frame_pose(poses_vision["trunk"][0][0], [0, 0, 1.5], exo_id, p) # set the trunk to be at [0,0,1.5]
-    # Left and Right links
-    # set_thigh_frame_pose("virtual_link_left", poses_vision["leftThigh"][0][0], exo_id, 'y', p)
-    # set_trunk_frame_pose("virtual_link_right", poses_vision["rightThigh"][0][0], exo_id, '-y', p)
-
-    # Find the link initial pose in pybullet
-    poses_pybullet = {
-        "trunk": [],
-        "leftThigh": [],
-        "rightThigh": []
-    }
-    for link_name in links_to_visualize:
-        link_id = link_ids[link_name]
-        x_direction, y_direction, link_position = get_initial_direction_and_position(exo_id, link_id)
-
-        if link_name == 'trunk':
-            # For trunk, interested in -x direction
-            poses_pybullet["trunk"].append((-x_direction, link_position))
-        elif link_name == 'leftThigh':
-            # For left, interested in y direction
-            poses_pybullet["leftThigh"].append((y_direction, link_position))
-        elif link_name == 'rightThigh':
-            # For right, interested in -y direction
-            poses_pybullet["rightThigh"].append((-y_direction, link_position))
-    
-    # Transform the positions in poses_vision into poses_pybullet
-    for link_name, poses in poses_vision.items():
-        for i in range(len(poses)):
-            if i == 0:
-                continue
-            else:
-                direction = np.array(poses[i][0])
-                relative_pos = np.array(poses[i][1]) - np.array(poses[i-1][1]) # calculate the relative position
-                pybullet_pos = np.array(poses_pybullet[link_name][-1][1]) # get the previous pybullet position
-                poses_pybullet[link_name].append((poses_pybullet[link_name][-1][0], pybullet_pos + relative_pos)) # append direction and relative position
-
-
-    for i in range(10):
-        print(poses_vision["trunk"][i])
-    for i in range(10):
-        print(poses_pybullet["trunk"][i])
-
-    # Step simulation
-    # for step in range(1, len(poses_pybullet["trunk"])):
-    #     # Set the pose for each link
-    #     for link_name in links_to_visualize:
-    #         link_id = link_ids[link_name]
-    #         direction, relative_pos = poses_pybullet[link_name][step]
-    #         set_trunk_frame_pose(direction, relative_pos, exo_id, p)
-    #     input("Press Enter to continue...")
-
     # Start simulation
     while True:
         p.stepSimulation()
@@ -181,4 +125,4 @@ def main(urdf_path, poses_path):
     p.disconnect()
 
 if __name__ == '__main__':
-    main('data/exo_model/urdf/exo_w_virtual_frame.urdf', 'data/vicon_test/poses.npy')
+    main('assets/exo_augmented/urdf/back_exo.urdf')

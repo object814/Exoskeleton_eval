@@ -62,7 +62,7 @@ def generate_micro_qr_codes_imgs(num_codes, resolution):
         img_path = os.path.join(assets_dir, f"micro_qr_code_{i}.png")
         qr.save(img_path, scale=50, kind='png', border=0)  # Adjust scale as needed to fit the desired resolution
 
-# Parameters
+# Parameters: Modify as needed
 num_codes = 4  # Number of QR codes to generate
 qr_sizes_mm = [100, 100, 100, 100]  # Sizes in millimeters for each Micro QR code
 resolution = 1000  # Desired resolution for PNG images
